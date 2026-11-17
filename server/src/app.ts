@@ -15,6 +15,7 @@ import { registerMealPlanRoutes } from './meal-plan/infrastructure/meal-plan-rou
 import { SqliteMealPlanRepository } from './meal-plan/infrastructure/sqlite-meal-plan-repository.js';
 import { ReceiptService, type ReceiptParser } from './receipts/application/receipt-service.js';
 import { registerReceiptRoutes } from './receipts/infrastructure/receipt-routes.js';
+import { ASSET_LINKS } from './shared/asset-links.js';
 import { openDatabase } from './shared/db.js';
 import { AppError } from './shared/errors.js';
 import { ChangeEvents } from './shared/events.js';
@@ -85,6 +86,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
 
   app.get('/api/health', async () => ({ ok: true }));
+  app.get('/.well-known/assetlinks.json', async () => ASSET_LINKS);
   registerAuth(app, new AuthService(db, options.inviteCode), { cookieSecure: options.cookieSecure });
   registerInventoryRoutes(app, inventory);
   registerMealPlanRoutes(app, meals);

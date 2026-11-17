@@ -1,0 +1,79 @@
+name: Android APK
+
+# Builds the signed Android app (a Trusted Web Activity that opens
+# https://kitchen.alejandrorodm.com) on every push and keeps it as a run artifact.
+# See deploy/android/README.md.
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      BUILD_TOOLS: '36.1.0'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            deploy/android/package-lock.json
+
+      - name: Build the web app (source of the app name, colours and icons)
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build -w web
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;${BUILD_TOOLS}" > /dev/null
+
+      - name: Generate the Android project
+        working-directory: deploy/android
+        env:
+          APP_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          python3 -m http.server 4555 --bind 127.0.0.1 --directory ../../web/dist > /dev/null 2>&1 &
+          for i in $(seq 20); do curl -sf http://127.0.0.1:4555/manifest.webmanifest > /dev/null && break; sleep 0.5; done
+          MANIFEST_URL=http://127.0.0.1:4555/manifest.webmanifest node generate-project.cjs "$RUNNER_TEMP/twa"
+
+      - name: Build and sign the APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::Signing secrets ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD are not available"
+            exit 1
+          fi
+          export KEYSTORE_PATH="$RUNNER_TEMP/android.keystore"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+          mkdir -p "$RUNNER_TEMP/out"
+          deploy/android/build-apk.sh "$RUNNER_TEMP/twa" "$RUNNER_TEMP/out/kitchen-storage-${{ github.run_number }}.apk"
+          rm -f "$KEYSTORE_PATH"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kitchen-storage-apk-${{ github.run_number }}
+          path: ${{ runner.temp }}/out/*.apk
+          if-no-files-found: error
+          retention-days: 30

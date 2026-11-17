@@ -6,3 +6,7 @@ data/
 *.sqlite-*
 .codegraph/
 .atl/
+*.apk
+*.aab
+*.keystore
+*.jks
