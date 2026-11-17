@@ -5,6 +5,8 @@ import { AttemptLimiter, type AuthService, type Session, type User } from './aut
 
 export const SESSION_COOKIE = 'ks_session';
 
+const PUBLIC_API_ROUTES = new Set(['/api/health', '/api/auth/login', '/api/auth/register', '/api/auth/logout']);
+
 const credentials = z.object({
   username: z.string().trim().min(2).max(40).regex(/^[\p{L}\p{N}._-]+$/u, 'Letters, numbers, dot, dash or underscore'),
   password: z.string().min(8).max(200),
@@ -19,11 +21,13 @@ declare module 'fastify' {
 export function registerAuth(app: FastifyInstance, auth: AuthService, options: { cookieSecure: boolean }) {
   const limiter = new AttemptLimiter();
 
-  // Every other API route requires a valid session.
+  // Every other API route requires a valid session. The decision uses the
+  // matched route pattern, not the raw URL, so percent-encoded paths that
+  // Fastify decodes before routing (e.g. /%61pi/items) cannot skip it.
   app.addHook('onRequest', async (request) => {
     request.user = auth.userForToken(request.cookies[SESSION_COOKIE]);
-    const url = request.url.split('?')[0]!;
-    const isPublic = !url.startsWith('/api/') || url === '/api/health' || /^\/api\/auth\/(login|register|logout)$/.test(url);
+    const route = request.routeOptions.url;
+    const isPublic = route === undefined || !route.startsWith('/api/') || PUBLIC_API_ROUTES.has(route);
     if (!isPublic) requireUser(request);
   });
 

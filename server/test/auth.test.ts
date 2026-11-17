@@ -12,6 +12,16 @@ describe('auth', () => {
     expect(res.statusCode).toBe(401);
   });
 
+  it('rejects percent-encoded API paths without a session', async () => {
+    app = await createTestApp();
+    for (const url of ['/%61pi/items', '/%61pi/shopping', '/%61pi/alerts', '/%61pi/events', '/api/%69tems']) {
+      const res = await app.inject({ method: 'GET', url });
+      expect(res.statusCode, url).toBe(401);
+    }
+    const write = await app.inject({ method: 'POST', url: '/%61pi/items', payload: { name: 'x', location: 'fridge', quantity: 1, unit: 'unit' } });
+    expect(write.statusCode).toBe(401);
+  });
+
   it('rejects registration with a wrong invite code', async () => {
     app = await createTestApp();
     const res = await app.inject({
