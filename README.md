@@ -93,5 +93,7 @@ One-time setup on the VPS (as root):
 Each release, from your machine:
 
 ```bash
-deploy/deploy.sh vps   # "vps" is the SSH host; the previous build is kept in /opt/kitchenstorage/app.old
+deploy/deploy.sh vps   # "vps" is the SSH host
 ```
+
+The script installs dependencies from `package-lock.json`, uploads into `/opt/kitchenstorage` (not the shared `/tmp`) and waits up to 30 s for `/api/health`. If the new build does not come up, it puts the previous one back, restarts it and keeps the failed build in `/opt/kitchenstorage/app.failed`.
