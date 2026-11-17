@@ -8,7 +8,7 @@ The `.github/workflows/android-apk.yml` workflow runs on every push (and manuall
 
 1. Builds `web/` and serves `web/dist` on `127.0.0.1:4555`, so the app name, colours and PNG icons come from the commit being built, not from production.
 2. `generate-project.cjs` generates the Android project with [`@bubblewrap/core`](https://github.com/GoogleChromeLabs/bubblewrap) (pinned in `package.json`/`package-lock.json`), using the run number as `versionCode`.
-3. `build-apk.sh` runs Gradle, aligns the APK and signs it with `apksigner`.
+3. `build-apk.sh` runs Gradle and aligns the APK in a step with no secrets (Gradle downloads code from the network); `sign-apk.sh` then signs it with `apksigner` in a separate step that is the only one given the signing secrets.
 4. The signed APK is uploaded as the artifact `kitchen-storage-apk-<run number>` (kept 30 days).
 
 ## Signing key
@@ -37,9 +37,11 @@ npm run build -w web
 cd deploy/android && npm ci --ignore-scripts
 python3 -m http.server 4555 --bind 127.0.0.1 --directory ../../web/dist &
 MANIFEST_URL=http://127.0.0.1:4555/manifest.webmanifest APP_VERSION_CODE=1 node generate-project.cjs /path/to/twa
-ANDROID_HOME=/path/to/android-sdk KEYSTORE_PATH=~/.local/kitchenstorage-tools/android.keystore \
+export ANDROID_HOME=/path/to/android-sdk
+./build-apk.sh /path/to/twa unsigned.apk
+KEYSTORE_PATH=~/.local/kitchenstorage-tools/android.keystore \
 KEYSTORE_PASSWORD="$(cat ~/.local/kitchenstorage-tools/keystore-password.txt)" \
-  ./build-apk.sh /path/to/twa kitchen-storage.apk
+  ./sign-apk.sh unsigned.apk kitchen-storage.apk
 ```
 
 Use a `APP_VERSION_CODE` higher than the installed app's, or Android refuses the update.
