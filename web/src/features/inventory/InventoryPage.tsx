@@ -1,108 +1,134 @@
+import { Plus, ScanLine, Search, SearchX, TriangleAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useAdjustItem, useDeleteItem, useItems, useSaveItem } from '../../api/hooks';
+import { useAdjustItem, useItems } from '../../api/hooks';
 import { LOCATIONS, type FoodItem, type Location } from '../../api/types';
+import { useNavigate } from '../../app/navigation';
 import { Button } from '../../components/atoms/Button';
-import { Modal } from '../../components/atoms/Modal';
+import { EmptyState } from '../../components/atoms/EmptyState';
 import { FoodItemRow } from '../../components/molecules/FoodItemRow';
-import { FoodItemForm } from '../../components/organisms/FoodItemForm';
-import { formatQuantity, LOCATION_ICON, LOCATION_LABEL, STATUS_LABEL } from '../../shared/labels';
+import { PageHeader } from '../../components/molecules/PageHeader';
+import { LOCATION_ICON } from '../../shared/icons';
+import { LOCATION_LABEL } from '../../shared/labels';
+import { FoodItemDialog } from './FoodItemDialog';
 
 type Filter = Location | 'all';
 
-export function InventoryPage({ onScanReceipt }: { onScanReceipt: () => void }) {
+export function InventoryPage() {
+  const navigate = useNavigate();
   const items = useItems();
-  const save = useSaveItem();
   const adjust = useAdjustItem();
-  const remove = useDeleteItem();
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
-  const [editing, setEditing] = useState<FoodItem | 'new' | null>(null);
+  const [editing, setEditing] = useState<{ item: FoodItem | 'new'; location?: Location } | null>(null);
 
-  const all = items.data ?? [];
-  const alerts = all.filter((item) => item.status !== 'ok');
-  const visible = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase();
-    return all.filter((item) => (filter === 'all' || item.location === filter) && (!term || item.name.toLocaleLowerCase().includes(term)));
-  }, [all, filter, search]);
-
-  const close = () => {
-    setEditing(null);
-    save.reset();
-    remove.reset();
-  };
+  const all = useMemo(() => [...(items.data ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'es')), [items.data]);
+  const alerts = all.filter((item) => item.status !== 'ok').length;
+  const term = search.trim().toLocaleLowerCase('es');
+  const visible = all.filter((item) => !term || item.name.toLocaleLowerCase('es').includes(term));
+  const zones = filter === 'all' ? LOCATIONS : [filter];
 
   return (
     <section className="page">
-      {alerts.length > 0 && (
-        <div className="alerts" role="status">
-          <strong>⚠️ {alerts.length === 1 ? '1 alimento necesita atención' : `${alerts.length} alimentos necesitan atención`}</strong>
-          <ul>
-            {alerts.map((item) => (
-              <li key={item.id} className={`alert-${item.status}`}>
-                {item.name}: {STATUS_LABEL[item.status].toLowerCase()} ({formatQuantity(item.available, item.unit)} disponible)
-              </li>
-            ))}
-          </ul>
-          <small>Ya están en la lista de la compra.</small>
+      <PageHeader
+        title="Alimentos"
+        actions={
+          <>
+            <Button icon={ScanLine} onClick={() => navigate('receipt')} className="hide-narrow">
+              Ticket
+            </Button>
+            <Button variant="primary" icon={Plus} onClick={() => setEditing({ item: 'new', location: filter === 'all' ? undefined : filter })}>
+              Añadir
+            </Button>
+          </>
+        }
+      />
+
+      {alerts > 0 && (
+        <p className="notice notice-warn" role="status">
+          <TriangleAlert aria-hidden size={18} />
+          <span>
+            {alerts === 1 ? '1 alimento se está acabando.' : `${alerts} alimentos se están acabando.`} Ya están en la lista de la compra.
+          </span>
+        </p>
+      )}
+
+      <div className="filters">
+        <label className="search">
+          <Search aria-hidden size={18} />
+          <input type="search" placeholder="Buscar alimento" aria-label="Buscar alimento" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </label>
+        <div className="chips" role="group" aria-label="Filtrar por lugar">
+          {(['all', ...LOCATIONS] as Filter[]).map((f) => {
+            const Icon = f === 'all' ? null : LOCATION_ICON[f];
+            return (
+              <button key={f} type="button" aria-pressed={filter === f} className={`chip ${filter === f ? 'chip-active' : ''}`} data-zone={f === 'all' ? undefined : f} onClick={() => setFilter(f)}>
+                {Icon && <Icon aria-hidden size={16} />}
+                {f === 'all' ? 'Todo' : LOCATION_LABEL[f]}
+                <span className="chip-count">{f === 'all' ? all.length : all.filter((i) => i.location === f).length}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {items.isPending && <p className="muted">Cargando alimentos…</p>}
+      {items.error && (
+        <p className="error" role="alert">
+          {items.error.message}
+        </p>
+      )}
+
+      {items.isSuccess && all.length === 0 && (
+        <EmptyState icon={Plus} title="Tu cocina está vacía">
+          <p>Añade lo que tienes en la nevera, el congelador y la despensa, o escanea el ticket de tu última compra.</p>
+          <div className="empty-actions">
+            <Button variant="primary" icon={Plus} onClick={() => setEditing({ item: 'new' })}>
+              Añadir alimento
+            </Button>
+            <Button icon={ScanLine} onClick={() => navigate('receipt')}>
+              Escanear ticket
+            </Button>
+          </div>
+        </EmptyState>
+      )}
+
+      {items.isSuccess && all.length > 0 && term && visible.length === 0 && (
+        <EmptyState icon={SearchX} title={`No hay nada que se llame «${search.trim()}»`} />
+      )}
+
+      {items.isSuccess && all.length > 0 && (
+        <div className={`zones ${filter === 'all' ? 'zones-all' : ''}`}>
+          {zones.map((location) => {
+            const group = visible.filter((item) => item.location === location);
+            if (term && !group.length) return null;
+            const Icon = LOCATION_ICON[location];
+            return (
+              <section key={location} className="zone" data-zone={location} aria-labelledby={`zone-${location}`}>
+                <h2 id={`zone-${location}`} className="zone-title">
+                  <span className="zone-badge">
+                    <Icon aria-hidden size={18} />
+                  </span>
+                  {LOCATION_LABEL[location]}
+                  <span className="zone-count">{group.length}</span>
+                </h2>
+                {group.length ? (
+                  <ul className="items">
+                    {group.map((item) => (
+                      <FoodItemRow key={item.id} item={item} busy={adjust.isPending} onEdit={() => setEditing({ item })} onAdjust={(delta) => adjust.mutate({ id: item.id, delta })} />
+                    ))}
+                  </ul>
+                ) : (
+                  <button type="button" className="zone-empty" onClick={() => setEditing({ item: 'new', location })}>
+                    <Plus aria-hidden size={16} /> Añadir a {LOCATION_LABEL[location].toLocaleLowerCase('es')}
+                  </button>
+                )}
+              </section>
+            );
+          })}
         </div>
       )}
 
-      <div className="toolbar">
-        <input className="input search" type="search" placeholder="Buscar alimento…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <Button variant="primary" onClick={() => setEditing('new')}>
-          + Añadir
-        </Button>
-        <Button onClick={onScanReceipt}>🧾 Ticket</Button>
-      </div>
-
-      <div className="chips" role="tablist">
-        {(['all', ...LOCATIONS] as Filter[]).map((f) => (
-          <button key={f} type="button" role="tab" aria-selected={filter === f} className={`chip ${filter === f ? 'chip-active' : ''}`} onClick={() => setFilter(f)}>
-            {f === 'all' ? 'Todo' : `${LOCATION_ICON[f]} ${LOCATION_LABEL[f]}`}
-            <span className="chip-count">{f === 'all' ? all.length : all.filter((i) => i.location === f).length}</span>
-          </button>
-        ))}
-      </div>
-
-      {items.isPending && <p className="muted">Cargando…</p>}
-      {items.error && <p className="error">{items.error.message}</p>}
-      {items.isSuccess && visible.length === 0 && <p className="empty">Aquí no hay nada todavía. Añade alimentos a mano o desde un ticket.</p>}
-
-      {(filter === 'all' ? LOCATIONS : [filter]).map((location) => {
-        const group = visible.filter((item) => item.location === location);
-        if (!group.length) return null;
-        return (
-          <div key={location} className="group">
-            <h2>
-              {LOCATION_ICON[location]} {LOCATION_LABEL[location]}
-            </h2>
-            <ul className="list">
-              {group.map((item) => (
-                <FoodItemRow
-                  key={item.id}
-                  item={item}
-                  busy={adjust.isPending}
-                  onEdit={() => setEditing(item)}
-                  onAdjust={(delta) => adjust.mutate({ id: item.id, delta })}
-                />
-              ))}
-            </ul>
-          </div>
-        );
-      })}
-
-      {editing && (
-        <Modal title={editing === 'new' ? 'Añadir alimento' : `Editar ${editing.name}`} onClose={close}>
-          <FoodItemForm
-            item={editing === 'new' ? undefined : editing}
-            defaultLocation={filter === 'all' ? 'fridge' : filter}
-            busy={save.isPending || remove.isPending}
-            error={save.error?.message ?? remove.error?.message}
-            onSubmit={(input) => save.mutate({ id: editing === 'new' ? undefined : editing.id, input }, { onSuccess: close })}
-            onDelete={editing === 'new' ? undefined : () => remove.mutate(editing.id, { onSuccess: close })}
-          />
-        </Modal>
-      )}
+      {editing && <FoodItemDialog item={editing.item} defaultLocation={editing.location} onClose={() => setEditing(null)} />}
     </section>
   );
 }

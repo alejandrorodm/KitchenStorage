@@ -8,12 +8,6 @@ export const LOCATION_LABEL: Record<Location, string> = {
   pantry: 'Despensa',
 };
 
-export const LOCATION_ICON: Record<Location, string> = {
-  fridge: '🧊',
-  freezer: '❄️',
-  pantry: '🥫',
-};
-
 export const UNIT_LABEL: Record<Unit, string> = {
   unit: 'ud.',
   g: 'g',
@@ -33,6 +27,12 @@ export const STATUS_LABEL: Record<StockStatus, string> = {
   low: 'Se está acabando',
   out: 'Agotado',
 };
+
+/** Amount one tap of the + / − buttons adds or removes, sized to the unit. */
+export function stepFor(unit: Unit): number {
+  if (unit === 'g' || unit === 'ml') return 100;
+  return unit === 'unit' ? 1 : 0.5;
+}
 
 export function formatQuantity(quantity: number, unit: Unit | null): string {
   const value = Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString('es-ES', { maximumFractionDigits: 3 });

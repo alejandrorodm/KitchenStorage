@@ -1,78 +1,112 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import { useItems, useMealAction, useMeals, useSaveMeal } from '../../api/hooks';
+import { useMeals } from '../../api/hooks';
 import { MEAL_TYPES, type MealType } from '../../api/types';
-import { Button } from '../../components/atoms/Button';
-import { Modal } from '../../components/atoms/Modal';
+import { Button, IconButton } from '../../components/atoms/Button';
 import { MealSlot } from '../../components/molecules/MealSlot';
-import { MealEditor } from '../../components/organisms/MealEditor';
+import { PageHeader } from '../../components/molecules/PageHeader';
+import { MEAL_ICON } from '../../shared/icons';
 import { MEAL_LABEL } from '../../shared/labels';
-import { addDays, formatDay, startOfWeek, toIsoDate, weekDays } from '../../shared/week';
+import { addDays, dayParts, formatDay, formatLongDay, startOfWeek, toIsoDate, weekDays } from '../../shared/week';
+import { MealDialog } from './MealDialog';
 
 export function PlannerPage() {
-  const [monday, setMonday] = useState(() => startOfWeek(new Date()));
+  const today = toIsoDate(new Date());
+  const thisWeek = startOfWeek(new Date());
+  const [monday, setMonday] = useState(thisWeek);
+  const [selected, setSelected] = useState(today);
   const [open, setOpen] = useState<{ date: string; mealType: MealType } | null>(null);
   const days = weekDays(monday);
   const meals = useMeals(days[0]!, days[6]!);
-  const items = useItems();
-  const save = useSaveMeal();
-  const action = useMealAction();
-  const today = toIsoDate(new Date());
 
   const find = (date: string, mealType: MealType) => meals.data?.find((m) => m.date === date && m.mealType === mealType);
-  const current = open ? find(open.date, open.mealType) : undefined;
-  const close = () => {
-    setOpen(null);
-    save.reset();
-    action.reset();
+  const hasPlan = (date: string) => MEAL_TYPES.some((mealType) => find(date, mealType));
+  const moveWeek = (offset: number) => {
+    const next = addDays(monday, offset);
+    setMonday(next);
+    setSelected(next === thisWeek ? today : next);
   };
 
   return (
     <section className="page">
-      <div className="toolbar week-nav">
-        <Button size="sm" onClick={() => setMonday(addDays(monday, -7))} aria-label="Semana anterior">
-          ‹
-        </Button>
-        <strong>
-          {formatDay(days[0]!)} – {formatDay(days[6]!)}
-        </strong>
-        <Button size="sm" onClick={() => setMonday(addDays(monday, 7))} aria-label="Semana siguiente">
-          ›
-        </Button>
-        {monday !== startOfWeek(new Date()) && (
-          <Button size="sm" variant="ghost" onClick={() => setMonday(startOfWeek(new Date()))}>
-            Hoy
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Menú semanal"
+        actions={
+          <div className="week-nav">
+            <IconButton icon={ChevronLeft} label="Semana anterior" onClick={() => moveWeek(-7)} />
+            <span className="week-range">
+              {formatDay(days[0]!)} – {formatDay(days[6]!)}
+            </span>
+            <IconButton icon={ChevronRight} label="Semana siguiente" onClick={() => moveWeek(7)} />
+            {monday !== thisWeek && (
+              <Button size="sm" variant="ghost" onClick={() => {
+                  setMonday(thisWeek);
+                  setSelected(today);
+                }}>
+                Hoy
+              </Button>
+            )}
+          </div>
+        }
+      />
 
-      {meals.error && <p className="error">{meals.error.message}</p>}
+      {meals.error && (
+        <p className="error" role="alert">
+          {meals.error.message}
+        </p>
+      )}
+
+      {/* Phones: pick a day, then see its three meals. Desktop: the whole week as a grid. */}
+      <div className="day-picker" role="tablist" aria-label="Día de la semana">
+        {days.map((date) => {
+          const { weekday, day } = dayParts(date);
+          return (
+            <button
+              key={date}
+              type="button"
+              role="tab"
+              aria-selected={selected === date}
+              aria-label={formatLongDay(date)}
+              className={`day-pick ${selected === date ? 'day-pick-active' : ''} ${date === today ? 'day-pick-today' : ''}`}
+              onClick={() => setSelected(date)}
+            >
+              <span className="day-pick-weekday">{weekday}</span>
+              <span className="day-pick-number">{day}</span>
+              <span className={`day-pick-dot ${hasPlan(date) ? 'day-pick-dot-on' : ''}`} aria-hidden />
+            </button>
+          );
+        })}
+      </div>
 
       <div className="week">
-        {days.map((date) => (
-          <div key={date} className={`day ${date === today ? 'day-today' : ''}`}>
-            <h3>{formatDay(date)}</h3>
-            {MEAL_TYPES.map((mealType) => (
-              <MealSlot key={mealType} mealType={mealType} meal={find(date, mealType)} onOpen={() => setOpen({ date, mealType })} />
-            ))}
-          </div>
-        ))}
+        <div className="week-labels" aria-hidden>
+          <span />
+          {MEAL_TYPES.map((mealType) => {
+            const Icon = MEAL_ICON[mealType];
+            return (
+              <span key={mealType} className="week-label">
+                <Icon size={16} /> {MEAL_LABEL[mealType]}
+              </span>
+            );
+          })}
+        </div>
+        {days.map((date) => {
+          const { weekday, day } = dayParts(date);
+          return (
+            <div key={date} className={`day ${date === today ? 'day-today' : ''} ${selected === date ? 'day-selected' : ''}`}>
+              <h2 className="day-title">
+                <span className="day-weekday">{weekday}</span> <span className="day-number">{day}</span>
+                <span className="day-long">{formatLongDay(date)}</span>
+              </h2>
+              {MEAL_TYPES.map((mealType) => (
+                <MealSlot key={mealType} mealType={mealType} meal={find(date, mealType)} onOpen={() => setOpen({ date, mealType })} />
+              ))}
+            </div>
+          );
+        })}
       </div>
 
-      {open && (
-        <Modal title={`${MEAL_LABEL[open.mealType]} · ${formatDay(open.date)}`} onClose={close}>
-          <MealEditor
-            key={`${open.date}-${open.mealType}-${current?.consumed}`}
-            meal={current}
-            items={items.data ?? []}
-            busy={save.isPending || action.isPending}
-            error={save.error?.message ?? action.error?.message}
-            onSave={(input) => save.mutate({ ...open, input }, { onSuccess: close })}
-            onConsume={() => current && action.mutate({ id: current.id, action: 'consume' })}
-            onUnconsume={() => current && action.mutate({ id: current.id, action: 'unconsume' })}
-            onDelete={() => current && action.mutate({ id: current.id, action: 'delete' }, { onSuccess: close })}
-          />
-        </Modal>
-      )}
+      {open && <MealDialog date={open.date} mealType={open.mealType} meal={find(open.date, open.mealType)} onClose={() => setOpen(null)} />}
     </section>
   );
 }

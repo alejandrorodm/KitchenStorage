@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, startOfWeek, weekDays } from './week';
+import { addDays, dayParts, formatLongDay, startOfWeek, weekDays } from './week';
 
 describe('week helpers', () => {
   it('starts the week on Monday, including when the date is a Sunday', () => {
@@ -19,5 +19,15 @@ describe('week helpers', () => {
       '2026-12-06',
     ]);
     expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
+  });
+});
+
+describe('day labels', () => {
+  it('splits a date into short weekday and day number for the day picker', () => {
+    expect(dayParts('2026-11-17')).toEqual({ weekday: 'mar', day: 17 });
+  });
+
+  it('spells out the full day for dialog subtitles', () => {
+    expect(formatLongDay('2026-11-17')).toBe('martes, 17 de noviembre');
   });
 });

@@ -1,9 +1,16 @@
-import { useState } from 'react';
+import { Camera, ImageUp, Info, LoaderCircle } from 'lucide-react';
+import { useState, type ChangeEvent } from 'react';
 import { useConfirmReceipt, useReadReceipt, useReceiptStatus } from '../../api/hooks';
 import type { ReceiptLine } from '../../api/types';
+import { useNavigate } from '../../app/navigation';
+import { EmptyState } from '../../components/atoms/EmptyState';
+import { useToast } from '../../components/atoms/Toast';
+import { PageHeader } from '../../components/molecules/PageHeader';
 import { ReceiptReview } from '../../components/organisms/ReceiptReview';
 
-export function ReceiptPage({ onDone }: { onDone: () => void }) {
+export function ReceiptPage() {
+  const navigate = useNavigate();
+  const toast = useToast();
   const status = useReceiptStatus();
   const read = useReadReceipt();
   const confirm = useConfirmReceipt();
@@ -15,18 +22,27 @@ export function ReceiptPage({ onDone }: { onDone: () => void }) {
     confirm.reset();
   };
 
+  const onFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // lets the same photo be picked again after an error
+    if (file) read.mutate(file, { onSuccess: (data) => setLines(data.lines) });
+  };
+
   if (status.data && !status.data.enabled) {
     return (
-      <section className="page">
-        <p className="empty">La lectura de tickets no está configurada en el servidor (falta GEMINI_API_KEY). Puedes seguir añadiendo alimentos a mano.</p>
+      <section className="page page-narrow">
+        <PageHeader title="Escanear ticket" />
+        <EmptyState icon={Info} title="La lectura de tickets no está activada">
+          <p>Falta configurar GEMINI_API_KEY en el servidor. Mientras tanto puedes añadir los alimentos a mano.</p>
+        </EmptyState>
       </section>
     );
   }
 
   if (lines) {
     return (
-      <section className="page">
-        <h2>Revisar ticket</h2>
+      <section className="page page-narrow">
+        <PageHeader title="Revisar ticket" kicker={`${lines.length} productos leídos`} />
         <ReceiptReview
           lines={lines}
           busy={confirm.isPending}
@@ -36,8 +52,9 @@ export function ReceiptPage({ onDone }: { onDone: () => void }) {
           onConfirm={() =>
             confirm.mutate(lines, {
               onSuccess: () => {
+                toast(`${lines.length} productos añadidos`);
                 reset();
-                onDone();
+                navigate('inventory');
               },
             })
           }
@@ -47,24 +64,37 @@ export function ReceiptPage({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <section className="page">
-      <label className={`dropzone ${read.isPending ? 'dropzone-busy' : ''}`}>
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          disabled={read.isPending}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (file) read.mutate(file, { onSuccess: (data) => setLines(data.lines) });
-          }}
-        />
-        <span className="dropzone-icon">🧾</span>
-        <strong>{read.isPending ? 'Leyendo el ticket…' : 'Haz o elige una foto del ticket'}</strong>
-        <small>Funciona mejor con el ticket estirado, bien iluminado y entero en la foto.</small>
-      </label>
-      {read.error && <p className="error">{read.error.message}</p>}
+    <section className="page page-narrow">
+      <PageHeader title="Escanear ticket" />
+      <p className="lead">Haz una foto al ticket de la compra y añadiremos los productos a tus alimentos. Antes de guardarlos podrás revisarlos.</p>
+      <div className={`capture ${read.isPending ? 'capture-busy' : ''}`}>
+        {read.isPending ? (
+          <p className="capture-progress" role="status">
+            <LoaderCircle aria-hidden size={28} className="spin" /> Leyendo el ticket…
+          </p>
+        ) : (
+          <>
+            <label className="btn btn-primary btn-md capture-btn">
+              <input type="file" className="sr-only" accept="image/*" capture="environment" onChange={onFile} />
+              <Camera aria-hidden size={20} /> Hacer foto
+            </label>
+            <label className="btn btn-secondary btn-md capture-btn">
+              <input type="file" className="sr-only" accept="image/*" onChange={onFile} />
+              <ImageUp aria-hidden size={20} /> Elegir imagen
+            </label>
+          </>
+        )}
+      </div>
+      {read.error && (
+        <p className="error" role="alert">
+          {read.error.message}
+        </p>
+      )}
+      <ul className="tips">
+        <li>Estira el ticket y que salga entero en la foto.</li>
+        <li>Busca buena luz y evita reflejos.</li>
+        <li>Si es muy largo, haz una foto por mitad.</li>
+      </ul>
     </section>
   );
 }

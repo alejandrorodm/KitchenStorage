@@ -5,6 +5,9 @@ import { registerSW } from 'virtual:pwa-register';
 import { ApiError } from './api/client';
 import { keys } from './api/hooks';
 import { App } from './app/App';
+import { ToastProvider } from './components/atoms/Toast';
+import '@fontsource-variable/figtree';
+import '@fontsource-variable/bricolage-grotesque';
 import './styles.css';
 
 // An expired session anywhere sends the user back to the sign-in screen.
@@ -28,7 +31,9 @@ registerSW({ immediate: true });
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

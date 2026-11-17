@@ -13,13 +13,15 @@ export default defineConfig({
         lang: 'es',
         short_name: 'Cocina',
         description: 'Nevera, congelador y despensa, planificador de comidas y lista de la compra',
-        theme_color: '#2f6f4f',
-        background_color: '#f6f5f1',
+        theme_color: '#2f6b4f',
+        background_color: '#f2f6f4',
         display: 'standalone',
         start_url: '/',
         icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
       },
       workbox: {
+        // Latin fonts are cached so the installed app keeps its typography offline.
+        globPatterns: ['**/*.{js,css,html,svg,webmanifest}', 'assets/*-latin-*.woff2'],
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [],
       },

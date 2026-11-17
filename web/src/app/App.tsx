@@ -1,74 +1,135 @@
-import { useState } from 'react';
+import { CalendarDays, LogOut, Refrigerator, ScanLine, ShoppingCart, Sun, type LucideIcon } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { useItems, useLogout, useMe, useShopping } from '../api/hooks';
 import { LoginPage } from '../features/auth/LoginPage';
 import { InventoryPage } from '../features/inventory/InventoryPage';
 import { PlannerPage } from '../features/planner/PlannerPage';
 import { ReceiptPage } from '../features/receipts/ReceiptPage';
 import { ShoppingPage } from '../features/shopping/ShoppingPage';
+import { TodayPage } from '../features/today/TodayPage';
+import { NavigationContext, SECTIONS, type Section } from './navigation';
 import { useLiveSync } from './useLiveSync';
 
-type Tab = 'inventory' | 'planner' | 'shopping' | 'receipt';
+interface NavItem {
+  id: Section;
+  label: string;
+  icon: LucideIcon;
+  /** Shown in the phone tab bar; the rest are reached from inside the pages. */
+  inTabBar: boolean;
+}
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'inventory', label: 'Cocina', icon: '🍎' },
-  { id: 'planner', label: 'Menú', icon: '📅' },
-  { id: 'shopping', label: 'Compra', icon: '🛒' },
-  { id: 'receipt', label: 'Ticket', icon: '🧾' },
+const NAV: NavItem[] = [
+  { id: 'today', label: 'Hoy', icon: Sun, inTabBar: true },
+  { id: 'inventory', label: 'Alimentos', icon: Refrigerator, inTabBar: true },
+  { id: 'planner', label: 'Menú', icon: CalendarDays, inTabBar: true },
+  { id: 'shopping', label: 'Compra', icon: ShoppingCart, inTabBar: true },
+  { id: 'receipt', label: 'Escanear ticket', icon: ScanLine, inTabBar: false },
 ];
 
 export function App() {
   const me = useMe();
-  useLiveSync(me.isSuccess);
+  useLiveSync(me.isSuccess && !!me.data);
 
-  if (me.isPending) return <p className="muted center">Cargando…</p>;
+  if (me.isPending) return <div className="splash" aria-label="Cargando" />;
   if (!me.data) return <LoginPage />;
   return <Shell username={me.data.username} />;
 }
 
 function Shell({ username }: { username: string }) {
-  const [tab, setTab] = useState<Tab>(() => tabFromHash());
+  const [section, setSection] = useState<Section>(sectionFromHash);
   const logout = useLogout();
   const alerts = (useItems().data ?? []).filter((item) => item.status !== 'ok').length;
   const toBuy = (useShopping().data ?? []).filter((entry) => !entry.checked).length;
-
-  const go = (next: Tab) => {
-    setTab(next);
-    history.replaceState(null, '', `#${next}`);
-    window.scrollTo(0, 0);
+  const badges: Partial<Record<Section, { count: number; alert?: boolean }>> = {
+    inventory: { count: alerts, alert: true },
+    shopping: { count: toBuy },
   };
 
-  const badges: Partial<Record<Tab, number>> = { inventory: alerts, shopping: toBuy };
+  const go = useCallback((next: Section) => {
+    setSection(next);
+    history.pushState(null, '', `#${next}`);
+    window.scrollTo(0, 0);
+  }, []);
+
+  // The phone's back button moves between sections instead of leaving the app.
+  useEffect(() => {
+    const onPop = () => setSection(sectionFromHash());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  useEffect(() => {
+    const label = NAV.find((item) => item.id === section)?.label;
+    document.title = `${label} – Kitchen Storage`;
+  }, [section]);
+
+  const badge = (id: Section) => {
+    const b = badges[id];
+    if (!b?.count) return null;
+    return (
+      <span className={`nav-badge ${b.alert ? 'nav-badge-alert' : ''}`} aria-label={b.alert ? `${b.count} avisos` : `${b.count} pendientes`}>
+        {b.count}
+      </span>
+    );
+  };
 
   return (
-    <div className="shell">
-      <header className="topbar">
-        <h1>{TABS.find((t) => t.id === tab)?.label}</h1>
-        <button type="button" className="link" onClick={() => logout.mutate()}>
-          {username} · Salir
-        </button>
-      </header>
-      <main>
-        {tab === 'inventory' && <InventoryPage onScanReceipt={() => go('receipt')} />}
-        {tab === 'planner' && <PlannerPage />}
-        {tab === 'shopping' && <ShoppingPage />}
-        {tab === 'receipt' && <ReceiptPage onDone={() => go('inventory')} />}
-      </main>
-      <nav className="tabbar" aria-label="Secciones">
-        {TABS.map((t) => (
-          <button key={t.id} type="button" className={`tab ${tab === t.id ? 'tab-active' : ''}`} aria-current={tab === t.id ? 'page' : undefined} onClick={() => go(t.id)}>
-            <span className="tab-icon" aria-hidden>
-              {t.icon}
+    <NavigationContext.Provider value={go}>
+      <div className="shell">
+        <aside className="sidebar">
+          <div className="brand">
+            <img src="/icon.svg" alt="" width={32} height={32} />
+            <span>Kitchen Storage</span>
+          </div>
+          <nav aria-label="Secciones">
+            <ul className="side-nav">
+              {NAV.map(({ id, label, icon: Icon }) => (
+                <li key={id}>
+                  <button type="button" className={`side-link ${section === id ? 'side-link-active' : ''}`} aria-current={section === id ? 'page' : undefined} onClick={() => go(id)}>
+                    <Icon aria-hidden size={20} />
+                    <span>{label}</span>
+                    {badge(id)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <div className="sidebar-user">
+            <span className="avatar" aria-hidden>
+              {username.charAt(0).toLocaleUpperCase('es')}
             </span>
-            {t.label}
-            {!!badges[t.id] && <span className={`tab-badge ${t.id === 'inventory' ? 'tab-badge-alert' : ''}`}>{badges[t.id]}</span>}
-          </button>
-        ))}
-      </nav>
-    </div>
+            <span className="sidebar-username">{username}</span>
+            <button type="button" className="icon-btn" onClick={() => logout.mutate()} aria-label="Cerrar sesión" title="Cerrar sesión">
+              <LogOut aria-hidden size={18} />
+            </button>
+          </div>
+        </aside>
+
+        <main className="content">
+          {section === 'today' && <TodayPage username={username} />}
+          {section === 'inventory' && <InventoryPage />}
+          {section === 'planner' && <PlannerPage />}
+          {section === 'shopping' && <ShoppingPage />}
+          {section === 'receipt' && <ReceiptPage />}
+        </main>
+
+        <nav className="tabbar" aria-label="Secciones">
+          {NAV.filter((item) => item.inTabBar).map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" className={`tab ${section === id ? 'tab-active' : ''}`} aria-current={section === id ? 'page' : undefined} onClick={() => go(id)}>
+              <span className="tab-icon">
+                <Icon aria-hidden size={22} />
+                {badge(id)}
+              </span>
+              {label}
+            </button>
+          ))}
+        </nav>
+      </div>
+    </NavigationContext.Provider>
   );
 }
 
-function tabFromHash(): Tab {
+function sectionFromHash(): Section {
   const hash = location.hash.slice(1);
-  return TABS.some((t) => t.id === hash) ? (hash as Tab) : 'inventory';
+  return SECTIONS.includes(hash as Section) ? (hash as Section) : 'today';
 }

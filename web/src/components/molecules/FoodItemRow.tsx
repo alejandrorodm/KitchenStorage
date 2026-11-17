@@ -1,5 +1,7 @@
+import { Minus, Plus } from 'lucide-react';
 import type { FoodItem } from '../../api/types';
-import { formatQuantity } from '../../shared/labels';
+import { formatQuantity, stepFor } from '../../shared/labels';
+import { IconButton } from '../atoms/Button';
 import { StatusBadge } from '../atoms/StatusBadge';
 
 interface FoodItemRowProps {
@@ -10,24 +12,24 @@ interface FoodItemRowProps {
 }
 
 export function FoodItemRow({ item, onEdit, onAdjust, busy }: FoodItemRowProps) {
-  const step = item.unit === 'g' || item.unit === 'ml' ? 100 : item.unit === 'unit' ? 1 : 0.5;
+  const step = stepFor(item.unit);
   return (
-    <li className={`row row-${item.status}`}>
-      <button type="button" className="row-main" onClick={onEdit}>
-        <span className="row-title">{item.name}</span>
-        <span className="row-meta">
-          {formatQuantity(item.quantity, item.unit)}
-          {item.planned > 0 && <> · {formatQuantity(item.planned, item.unit)} planificado · {formatQuantity(item.available, item.unit)} libre</>}
+    <li className={`item item-${item.status}`} data-zone={item.location}>
+      <button type="button" className="item-main" onClick={onEdit} aria-label={`Editar ${item.name}`}>
+        <span className="item-name">{item.name}</span>
+        <span className="item-meta">
+          <StatusBadge status={item.status} />
+          {item.planned > 0 && (
+            <span>
+              {formatQuantity(item.planned, item.unit)} reservado en el menú, {formatQuantity(item.available, item.unit)} libre
+            </span>
+          )}
         </span>
-        <StatusBadge status={item.status} />
       </button>
       <div className="stepper">
-        <button type="button" className="icon-btn" disabled={busy || item.quantity <= 0} onClick={() => onAdjust(-step)} aria-label={`Quitar ${step} de ${item.name}`}>
-          −
-        </button>
-        <button type="button" className="icon-btn" disabled={busy} onClick={() => onAdjust(step)} aria-label={`Añadir ${step} de ${item.name}`}>
-          +
-        </button>
+        <IconButton icon={Minus} label={`Quitar ${formatQuantity(step, item.unit)} de ${item.name}`} disabled={busy || item.quantity <= 0} onClick={() => onAdjust(-step)} />
+        <span className="stepper-value">{formatQuantity(item.quantity, item.unit)}</span>
+        <IconButton icon={Plus} label={`Añadir ${formatQuantity(step, item.unit)} de ${item.name}`} disabled={busy} onClick={() => onAdjust(step)} />
       </div>
     </li>
   );
