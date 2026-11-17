@@ -34,6 +34,11 @@ export function stepFor(unit: Unit): number {
   return unit === 'unit' ? 1 : 0.5;
 }
 
+/** "1 producto", "3 productos". */
+export function countOf(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export function formatQuantity(quantity: number, unit: Unit | null): string {
   const value = Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString('es-ES', { maximumFractionDigits: 3 });
   return unit ? `${value} ${UNIT_LABEL[unit]}` : value;

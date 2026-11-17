@@ -1,6 +1,6 @@
 import { Plus, X } from 'lucide-react';
 import { LOCATIONS, UNITS, type ReceiptLine } from '../../api/types';
-import { LOCATION_LABEL, UNIT_LABEL } from '../../shared/labels';
+import { countOf, LOCATION_LABEL, UNIT_LABEL } from '../../shared/labels';
 import { Button, IconButton } from '../atoms/Button';
 import { NumberInput, Select, TextInput } from '../atoms/Field';
 
@@ -42,7 +42,7 @@ export function ReceiptReview({ lines, busy, error, onChange, onConfirm, onCance
           Descartar
         </Button>
         <Button variant="primary" icon={Plus} onClick={onConfirm} disabled={busy || !valid}>
-          Añadir {lines.length} {lines.length === 1 ? 'producto' : 'productos'}
+          Añadir {countOf(lines.length, 'producto', 'productos')}
         </Button>
       </div>
     </div>

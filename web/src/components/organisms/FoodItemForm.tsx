@@ -44,7 +44,7 @@ export function FoodItemForm({ item, defaultLocation, error, busy, onSubmit, onD
       </Field>
       <div className="field">
         <span className="field-label">Dónde lo guardas</span>
-        <Segmented label="Dónde lo guardas" value={form.location} options={LOCATIONS} labels={LOCATION_LABEL} icons={LOCATION_ICON} onChange={(v) => set('location', v)} />
+        <Segmented label="Dónde lo guardas" value={form.location} options={LOCATIONS} labels={LOCATION_LABEL} icons={LOCATION_ICON} zoned onChange={(v) => set('location', v)} />
       </div>
       <div className="form-row">
         <Field label="Cantidad">

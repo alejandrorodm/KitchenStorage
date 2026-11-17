@@ -6,6 +6,7 @@ import { useNavigate } from '../../app/navigation';
 import { EmptyState } from '../../components/atoms/EmptyState';
 import { useToast } from '../../components/atoms/Toast';
 import { PageHeader } from '../../components/molecules/PageHeader';
+import { countOf } from '../../shared/labels';
 import { ReceiptReview } from '../../components/organisms/ReceiptReview';
 
 export function ReceiptPage() {
@@ -42,7 +43,7 @@ export function ReceiptPage() {
   if (lines) {
     return (
       <section className="page page-narrow">
-        <PageHeader title="Revisar ticket" kicker={`${lines.length} productos leídos`} />
+        <PageHeader title="Revisar ticket" kicker={countOf(lines.length, 'producto leído', 'productos leídos')} />
         <ReceiptReview
           lines={lines}
           busy={confirm.isPending}
@@ -52,7 +53,7 @@ export function ReceiptPage() {
           onConfirm={() =>
             confirm.mutate(lines, {
               onSuccess: () => {
-                toast(`${lines.length} productos añadidos`);
+                toast(`${countOf(lines.length, 'producto añadido', 'productos añadidos')}`);
                 reset();
                 navigate('inventory');
               },

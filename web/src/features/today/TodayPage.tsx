@@ -12,6 +12,10 @@ import { fromIsoDate, toIsoDate } from '../../shared/week';
 import { FoodItemDialog } from '../inventory/FoodItemDialog';
 import { MealDialog } from '../planner/MealDialog';
 
+/** How many entries each home-screen card previews before linking to the full page. */
+const ALERT_PREVIEW = 6;
+const SHOPPING_PREVIEW = 8;
+
 /** Home screen: what we eat today, what is running out and what to buy. */
 export function TodayPage({ username }: { username: string }) {
   const navigate = useNavigate();
@@ -78,7 +82,7 @@ export function TodayPage({ username }: { username: string }) {
             </p>
           ) : (
             <ul className="mini-list">
-              {alerts.slice(0, 6).map((item) => {
+              {alerts.slice(0, ALERT_PREVIEW).map((item) => {
                 const Icon = LOCATION_ICON[item.location];
                 return (
                   <li key={item.id}>
@@ -93,7 +97,7 @@ export function TodayPage({ username }: { username: string }) {
               })}
             </ul>
           )}
-          {alerts.length > 6 && (
+          {alerts.length > ALERT_PREVIEW && (
             <button type="button" className="text-link" onClick={() => navigate('inventory')}>
               Ver los {alerts.length} <ChevronRight aria-hidden size={16} />
             </button>
@@ -110,7 +114,7 @@ export function TodayPage({ username }: { username: string }) {
               <CircleCheck aria-hidden size={20} /> No falta nada por comprar.
             </p>
           ) : (
-            <p className="shopping-preview">{toBuy.slice(0, 8).map((entry) => entry.name).join(', ')}{toBuy.length > 8 ? '…' : ''}</p>
+            <p className="shopping-preview">{toBuy.slice(0, SHOPPING_PREVIEW).map((entry) => entry.name).join(', ')}{toBuy.length > SHOPPING_PREVIEW ? '…' : ''}</p>
           )}
           <Button icon={ShoppingCart} onClick={() => navigate('shopping')}>
             Abrir la lista
