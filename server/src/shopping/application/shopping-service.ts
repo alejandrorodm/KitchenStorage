@@ -62,13 +62,13 @@ export class ShoppingService {
   }
 
   setChecked(id: string, checked: boolean): ShoppingEntry {
-    if (!this.entries.setChecked(id, checked)) throw notFound('Shopping entry');
+    if (!this.entries.setChecked(id, checked)) throw notFound('No se encontró el artículo de la lista');
     this.afterChange();
     return this.entries.get(id)!;
   }
 
   delete(id: string): void {
-    if (!this.entries.delete(id)) throw notFound('Shopping entry');
+    if (!this.entries.delete(id)) throw notFound('No se encontró el artículo de la lista');
     this.afterChange();
   }
 

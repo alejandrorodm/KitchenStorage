@@ -8,5 +8,5 @@ export class AppError extends Error {
   }
 }
 
-export const notFound = (what: string) => new AppError(404, 'not_found', `${what} not found`);
+export const notFound = (message: string) => new AppError(404, 'not_found', message);
 export const conflict = (message: string) => new AppError(409, 'conflict', message);

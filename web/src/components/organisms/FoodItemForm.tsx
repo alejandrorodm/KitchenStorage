@@ -36,32 +36,32 @@ export function FoodItemForm({ item, defaultLocation, error, busy, onSubmit, onD
 
   return (
     <form className="form" onSubmit={submit}>
-      <Field label="Name">
+      <Field label="Nombre">
         <TextInput value={form.name} onChange={(e) => set('name', e.target.value)} required maxLength={120} autoFocus />
       </Field>
-      <Field label="Where">
+      <Field label="Dónde">
         <Select value={form.location} options={LOCATIONS} labels={LOCATION_LABEL} onChange={(v) => set('location', v)} />
       </Field>
       <div className="form-row">
-        <Field label="Quantity">
+        <Field label="Cantidad">
           <NumberInput value={form.quantity} onChange={(e) => set('quantity', e.target.value)} required />
         </Field>
-        <Field label="Unit">
+        <Field label="Unidad">
           <Select value={form.unit} options={UNITS} labels={UNIT_LABEL} onChange={(v) => set('unit', v)} />
         </Field>
       </div>
-      <Field label="Warn me when available is at or below">
+      <Field label="Avisarme cuando quede esto o menos">
         <NumberInput value={form.lowThreshold} onChange={(e) => set('lowThreshold', e.target.value)} required />
       </Field>
       {error && <p className="error">{error}</p>}
       <div className="form-actions">
         {onDelete && (
           <Button variant="danger" onClick={onDelete} disabled={busy}>
-            Delete
+            Eliminar
           </Button>
         )}
         <Button variant="primary" type="submit" disabled={busy}>
-          {item ? 'Save' : 'Add'}
+          {item ? 'Guardar' : 'Añadir'}
         </Button>
       </div>
     </form>

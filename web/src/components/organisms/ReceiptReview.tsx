@@ -18,28 +18,28 @@ export function ReceiptReview({ lines, busy, error, onChange, onConfirm, onCance
 
   return (
     <div className="form">
-      <p className="muted">Check what was read before adding it. Items with the same name, place and unit are added to the existing ones.</p>
+      <p className="muted">Revisa lo que se ha leído antes de añadirlo. Los productos con el mismo nombre, lugar y unidad se suman a los que ya tienes.</p>
       <ul className="receipt-lines">
         {lines.map((line, index) => (
           <li key={index} className="receipt-line">
-            <TextInput value={line.name} onChange={(e) => update(index, { name: e.target.value })} aria-label="Name" />
-            <NumberInput className="input qty" value={line.quantity} onChange={(e) => update(index, { quantity: Number(e.target.value) })} aria-label="Quantity" />
-            <Select value={line.unit} options={UNITS} labels={UNIT_LABEL} onChange={(unit) => update(index, { unit })} aria-label="Unit" />
-            <Select value={line.location} options={LOCATIONS} labels={LOCATION_LABEL} onChange={(location) => update(index, { location })} aria-label="Where" />
-            <button type="button" className="icon-btn" onClick={() => onChange(lines.filter((_, i) => i !== index))} aria-label={`Remove ${line.name}`}>
+            <TextInput value={line.name} onChange={(e) => update(index, { name: e.target.value })} aria-label="Nombre" />
+            <NumberInput className="input qty" value={line.quantity} onChange={(e) => update(index, { quantity: Number(e.target.value) })} aria-label="Cantidad" />
+            <Select value={line.unit} options={UNITS} labels={UNIT_LABEL} onChange={(unit) => update(index, { unit })} aria-label="Unidad" />
+            <Select value={line.location} options={LOCATIONS} labels={LOCATION_LABEL} onChange={(location) => update(index, { location })} aria-label="Dónde" />
+            <button type="button" className="icon-btn" onClick={() => onChange(lines.filter((_, i) => i !== index))} aria-label={`Quitar ${line.name}`}>
               ✕
             </button>
           </li>
         ))}
       </ul>
-      {lines.length === 0 && <p className="muted">No food products left.</p>}
+      {lines.length === 0 && <p className="muted">No queda ningún producto.</p>}
       {error && <p className="error">{error}</p>}
       <div className="form-actions">
         <Button variant="ghost" onClick={onCancel} disabled={busy}>
-          Cancel
+          Cancelar
         </Button>
         <Button variant="primary" onClick={onConfirm} disabled={busy || !valid}>
-          Add {lines.length} to inventory
+          Añadir {lines.length} al inventario
         </Button>
       </div>
     </div>

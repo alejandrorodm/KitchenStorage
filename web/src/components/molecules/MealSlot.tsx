@@ -16,7 +16,7 @@ export function MealSlot({ mealType, meal, onOpen }: MealSlotProps) {
         {meal?.consumed && ' ✓'}
       </span>
       {empty ? (
-        <span className="slot-placeholder">+ Plan</span>
+        <span className="slot-placeholder">+ Planificar</span>
       ) : (
         <>
           {meal.title && <span className="slot-title">{meal.title}</span>}

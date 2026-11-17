@@ -3,9 +3,9 @@ import type { Location, MealType, StockStatus, Unit } from '../api/types';
 // All user-facing wording for domain values lives here so the UI can be translated in one place.
 
 export const LOCATION_LABEL: Record<Location, string> = {
-  fridge: 'Fridge',
-  freezer: 'Freezer',
-  pantry: 'Pantry',
+  fridge: 'Nevera',
+  freezer: 'Congelador',
+  pantry: 'Despensa',
 };
 
 export const LOCATION_ICON: Record<Location, string> = {
@@ -15,7 +15,7 @@ export const LOCATION_ICON: Record<Location, string> = {
 };
 
 export const UNIT_LABEL: Record<Unit, string> = {
-  unit: 'pcs',
+  unit: 'ud.',
   g: 'g',
   kg: 'kg',
   ml: 'ml',
@@ -23,18 +23,18 @@ export const UNIT_LABEL: Record<Unit, string> = {
 };
 
 export const MEAL_LABEL: Record<MealType, string> = {
-  breakfast: 'Breakfast',
-  lunch: 'Lunch',
-  dinner: 'Dinner',
+  breakfast: 'Desayuno',
+  lunch: 'Comida',
+  dinner: 'Cena',
 };
 
 export const STATUS_LABEL: Record<StockStatus, string> = {
-  ok: 'In stock',
-  low: 'Running low',
-  out: 'Out of stock',
+  ok: 'Disponible',
+  low: 'Se está acabando',
+  out: 'Agotado',
 };
 
 export function formatQuantity(quantity: number, unit: Unit | null): string {
-  const value = Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString(undefined, { maximumFractionDigits: 3 });
+  const value = Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString('es-ES', { maximumFractionDigits: 3 });
   return unit ? `${value} ${UNIT_LABEL[unit]}` : value;
 }

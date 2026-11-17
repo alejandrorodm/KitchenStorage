@@ -29,18 +29,18 @@ export function PlannerPage() {
   return (
     <section className="page">
       <div className="toolbar week-nav">
-        <Button size="sm" onClick={() => setMonday(addDays(monday, -7))} aria-label="Previous week">
+        <Button size="sm" onClick={() => setMonday(addDays(monday, -7))} aria-label="Semana anterior">
           ‹
         </Button>
         <strong>
           {formatDay(days[0]!)} – {formatDay(days[6]!)}
         </strong>
-        <Button size="sm" onClick={() => setMonday(addDays(monday, 7))} aria-label="Next week">
+        <Button size="sm" onClick={() => setMonday(addDays(monday, 7))} aria-label="Semana siguiente">
           ›
         </Button>
         {monday !== startOfWeek(new Date()) && (
           <Button size="sm" variant="ghost" onClick={() => setMonday(startOfWeek(new Date()))}>
-            Today
+            Hoy
           </Button>
         )}
       </div>

@@ -8,7 +8,7 @@ export const SESSION_COOKIE = 'ks_session';
 const PUBLIC_API_ROUTES = new Set(['/api/health', '/api/auth/login', '/api/auth/register', '/api/auth/logout']);
 
 const credentials = z.object({
-  username: z.string().trim().min(2).max(40).regex(/^[\p{L}\p{N}._-]+$/u, 'Letters, numbers, dot, dash or underscore'),
+  username: z.string().trim().min(2).max(40).regex(/^[\p{L}\p{N}._-]+$/u, 'Solo letras, números, punto, guion o guion bajo'),
   password: z.string().min(8).max(200),
 });
 
@@ -66,6 +66,6 @@ export function registerAuth(app: FastifyInstance, auth: AuthService, options: {
 }
 
 function requireUser(request: FastifyRequest): User {
-  if (!request.user) throw new AppError(401, 'unauthenticated', 'Sign in required');
+  if (!request.user) throw new AppError(401, 'unauthenticated', 'Tienes que iniciar sesión');
   return request.user;
 }

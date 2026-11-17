@@ -16,11 +16,11 @@ export function ShoppingRow({ entry, onToggle, onDelete }: ShoppingRowProps) {
         <span className="row-title">{entry.name}</span>
         <span className="row-meta">
           {entry.quantity !== null && formatQuantity(entry.quantity, entry.unit)}
-          {entry.source === 'auto' && <span className="tag">auto</span>}
+          {entry.source === 'auto' && <span className="tag">automático</span>}
         </span>
         {entry.status && <StatusBadge status={entry.status} />}
       </label>
-      <button type="button" className="icon-btn" onClick={onDelete} aria-label={`Delete ${entry.name}`}>
+      <button type="button" className="icon-btn" onClick={onDelete} aria-label={`Eliminar ${entry.name}`}>
         🗑
       </button>
     </li>

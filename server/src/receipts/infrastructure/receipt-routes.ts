@@ -9,7 +9,7 @@ export function registerReceiptRoutes(app: FastifyInstance, receipts: ReceiptSer
 
   app.post('/api/receipts/read', async (request) => {
     const file = await request.file();
-    if (!file) throw new AppError(400, 'validation_error', 'Attach the receipt photo as multipart field "image"');
+    if (!file) throw new AppError(400, 'validation_error', 'Adjunta la foto del ticket en el campo "image"');
     const image = await file.toBuffer();
     return { lines: await receipts.read(image, file.mimetype) };
   });

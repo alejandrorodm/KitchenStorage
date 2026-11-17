@@ -31,5 +31,5 @@ export function weekDays(monday: string): string[] {
 }
 
 export function formatDay(iso: string): string {
-  return fromIsoDate(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  return fromIsoDate(iso).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
 }

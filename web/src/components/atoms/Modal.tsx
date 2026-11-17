@@ -20,7 +20,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
     <dialog ref={ref} className="modal" onCancel={onClose} aria-labelledby="modal-title">
       <header className="modal-header">
         <h2 id="modal-title">{title}</h2>
-        <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+        <button type="button" className="icon-btn" onClick={onClose} aria-label="Cerrar">
           ✕
         </button>
       </header>

@@ -18,10 +18,10 @@ export function LoginPage() {
       <img src="/icon.svg" alt="" width={72} height={72} />
       <h1>Kitchen Storage</h1>
       <form className="form card" onSubmit={submit}>
-        <Field label="Username">
+        <Field label="Usuario">
           <TextInput autoComplete="username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
         </Field>
-        <Field label="Password">
+        <Field label="Contraseña">
           <TextInput
             type="password"
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -32,16 +32,16 @@ export function LoginPage() {
           />
         </Field>
         {mode === 'register' && (
-          <Field label="Household invite code">
+          <Field label="Código de invitación del hogar">
             <TextInput value={form.inviteCode} onChange={(e) => setForm({ ...form, inviteCode: e.target.value })} required />
           </Field>
         )}
         {login.error && <p className="error">{login.error.message}</p>}
         <Button variant="primary" type="submit" disabled={login.isPending}>
-          {mode === 'login' ? 'Sign in' : 'Create account'}
+          {mode === 'login' ? 'Entrar' : 'Crear cuenta'}
         </Button>
         <Button variant="ghost" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
-          {mode === 'login' ? 'New here? Create an account' : 'I already have an account'}
+          {mode === 'login' ? '¿Eres nuevo? Crea una cuenta' : 'Ya tengo cuenta'}
         </Button>
       </form>
     </main>

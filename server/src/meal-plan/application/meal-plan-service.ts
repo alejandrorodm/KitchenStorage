@@ -47,7 +47,7 @@ export class MealPlanService {
   ) {}
 
   week(from: string, to: string): Meal[] {
-    if (from > to) throw new AppError(400, 'validation_error', '`from` must not be after `to`');
+    if (from > to) throw new AppError(400, 'validation_error', 'La fecha de inicio no puede ser posterior a la de fin');
     return this.meals.listBetween(from, to);
   }
 
@@ -55,10 +55,10 @@ export class MealPlanService {
   save(date: string, mealType: MealType, input: MealInput): Meal {
     const merged = mergeAllocations(input.allocations);
     const missing = this.meals.missingFoodItems(merged.map((a) => a.foodItemId));
-    if (missing.length) throw notFound(`Food item ${missing.join(', ')}`);
+    if (missing.length) throw notFound(`No se encontraron estos alimentos: ${missing.join(', ')}`);
 
     const existing = this.meals.findSlot(date, mealType);
-    if (existing?.consumed) throw conflict('Meal already eaten; undo it before editing');
+    if (existing?.consumed) throw conflict('Esta comida ya está marcada como hecha; deshazlo antes de editarla');
 
     const id = existing?.id ?? randomUUID();
     this.meals.runAtomically(() =>
@@ -82,7 +82,7 @@ export class MealPlanService {
   }
 
   delete(id: string): void {
-    if (!this.meals.delete(id)) throw notFound('Meal');
+    if (!this.meals.delete(id)) throw notFound('No se encontró la comida');
     this.afterChange();
   }
 
@@ -96,7 +96,7 @@ export class MealPlanService {
 
   private mustGet(id: string): Meal {
     const meal = this.meals.get(id);
-    if (!meal) throw notFound('Meal');
+    if (!meal) throw notFound('No se encontró la comida');
     return meal;
   }
 }

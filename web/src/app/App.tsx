@@ -10,17 +10,17 @@ import { useLiveSync } from './useLiveSync';
 type Tab = 'inventory' | 'planner' | 'shopping' | 'receipt';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'inventory', label: 'Kitchen', icon: '🍎' },
-  { id: 'planner', label: 'Planner', icon: '📅' },
-  { id: 'shopping', label: 'Shopping', icon: '🛒' },
-  { id: 'receipt', label: 'Receipt', icon: '🧾' },
+  { id: 'inventory', label: 'Cocina', icon: '🍎' },
+  { id: 'planner', label: 'Menú', icon: '📅' },
+  { id: 'shopping', label: 'Compra', icon: '🛒' },
+  { id: 'receipt', label: 'Ticket', icon: '🧾' },
 ];
 
 export function App() {
   const me = useMe();
   useLiveSync(me.isSuccess);
 
-  if (me.isPending) return <p className="muted center">Loading…</p>;
+  if (me.isPending) return <p className="muted center">Cargando…</p>;
   if (!me.data) return <LoginPage />;
   return <Shell username={me.data.username} />;
 }
@@ -44,7 +44,7 @@ function Shell({ username }: { username: string }) {
       <header className="topbar">
         <h1>{TABS.find((t) => t.id === tab)?.label}</h1>
         <button type="button" className="link" onClick={() => logout.mutate()}>
-          {username} · Sign out
+          {username} · Salir
         </button>
       </header>
       <main>
@@ -53,7 +53,7 @@ function Shell({ username }: { username: string }) {
         {tab === 'shopping' && <ShoppingPage />}
         {tab === 'receipt' && <ReceiptPage onDone={() => go('inventory')} />}
       </main>
-      <nav className="tabbar" aria-label="Sections">
+      <nav className="tabbar" aria-label="Secciones">
         {TABS.map((t) => (
           <button key={t.id} type="button" className={`tab ${tab === t.id ? 'tab-active' : ''}`} aria-current={tab === t.id ? 'page' : undefined} onClick={() => go(t.id)}>
             <span className="tab-icon" aria-hidden>

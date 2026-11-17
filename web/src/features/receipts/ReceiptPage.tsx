@@ -18,7 +18,7 @@ export function ReceiptPage({ onDone }: { onDone: () => void }) {
   if (status.data && !status.data.enabled) {
     return (
       <section className="page">
-        <p className="empty">Receipt reading is not configured on the server (missing GEMINI_API_KEY). You can still add food manually.</p>
+        <p className="empty">La lectura de tickets no está configurada en el servidor (falta GEMINI_API_KEY). Puedes seguir añadiendo alimentos a mano.</p>
       </section>
     );
   }
@@ -26,7 +26,7 @@ export function ReceiptPage({ onDone }: { onDone: () => void }) {
   if (lines) {
     return (
       <section className="page">
-        <h2>Review receipt</h2>
+        <h2>Revisar ticket</h2>
         <ReceiptReview
           lines={lines}
           busy={confirm.isPending}
@@ -61,8 +61,8 @@ export function ReceiptPage({ onDone }: { onDone: () => void }) {
           }}
         />
         <span className="dropzone-icon">🧾</span>
-        <strong>{read.isPending ? 'Reading receipt…' : 'Take or choose a photo of the receipt'}</strong>
-        <small>Flat, well lit and with the whole receipt visible works best.</small>
+        <strong>{read.isPending ? 'Leyendo el ticket…' : 'Haz o elige una foto del ticket'}</strong>
+        <small>Funciona mejor con el ticket estirado, bien iluminado y entero en la foto.</small>
       </label>
       {read.error && <p className="error">{read.error.message}</p>}
     </section>

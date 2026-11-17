@@ -23,15 +23,15 @@ export class ReceiptService {
 
   /** Reads the receipt but stores nothing: the user reviews the lines first. */
   async read(image: Buffer, mimeType: string): Promise<ReceiptLine[]> {
-    if (!this.parser) throw new AppError(503, 'receipts_disabled', 'Receipt reading is not configured (missing GEMINI_API_KEY)');
+    if (!this.parser) throw new AppError(503, 'receipts_disabled', 'La lectura de tickets no está configurada en el servidor (falta GEMINI_API_KEY)');
     if (!(SUPPORTED_IMAGE_TYPES as readonly string[]).includes(mimeType)) {
-      throw new AppError(415, 'unsupported_image', `Unsupported image type ${mimeType}`);
+      throw new AppError(415, 'unsupported_image', `Formato de imagen no admitido: ${mimeType}`);
     }
     try {
       return await this.parser.parse(image, mimeType);
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError(502, 'receipt_read_failed', 'Could not read the receipt, try again or add items manually');
+      throw new AppError(502, 'receipt_read_failed', 'No se pudo leer el ticket. Inténtalo de nuevo o añade los productos a mano');
     }
   }
 

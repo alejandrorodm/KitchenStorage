@@ -17,15 +17,15 @@ export function FoodItemRow({ item, onEdit, onAdjust, busy }: FoodItemRowProps) 
         <span className="row-title">{item.name}</span>
         <span className="row-meta">
           {formatQuantity(item.quantity, item.unit)}
-          {item.planned > 0 && <> · {formatQuantity(item.planned, item.unit)} planned · {formatQuantity(item.available, item.unit)} free</>}
+          {item.planned > 0 && <> · {formatQuantity(item.planned, item.unit)} planificado · {formatQuantity(item.available, item.unit)} libre</>}
         </span>
         <StatusBadge status={item.status} />
       </button>
       <div className="stepper">
-        <button type="button" className="icon-btn" disabled={busy || item.quantity <= 0} onClick={() => onAdjust(-step)} aria-label={`Remove ${step} ${item.name}`}>
+        <button type="button" className="icon-btn" disabled={busy || item.quantity <= 0} onClick={() => onAdjust(-step)} aria-label={`Quitar ${step} de ${item.name}`}>
           −
         </button>
-        <button type="button" className="icon-btn" disabled={busy} onClick={() => onAdjust(step)} aria-label={`Add ${step} ${item.name}`}>
+        <button type="button" className="icon-btn" disabled={busy} onClick={() => onAdjust(step)} aria-label={`Añadir ${step} de ${item.name}`}>
           +
         </button>
       </div>

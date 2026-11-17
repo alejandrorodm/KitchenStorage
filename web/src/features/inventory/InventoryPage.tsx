@@ -35,38 +35,38 @@ export function InventoryPage({ onScanReceipt }: { onScanReceipt: () => void }) 
     <section className="page">
       {alerts.length > 0 && (
         <div className="alerts" role="status">
-          <strong>⚠️ {alerts.length === 1 ? '1 item needs attention' : `${alerts.length} items need attention`}</strong>
+          <strong>⚠️ {alerts.length === 1 ? '1 alimento necesita atención' : `${alerts.length} alimentos necesitan atención`}</strong>
           <ul>
             {alerts.map((item) => (
               <li key={item.id} className={`alert-${item.status}`}>
-                {item.name}: {STATUS_LABEL[item.status].toLowerCase()} ({formatQuantity(item.available, item.unit)} available)
+                {item.name}: {STATUS_LABEL[item.status].toLowerCase()} ({formatQuantity(item.available, item.unit)} disponible)
               </li>
             ))}
           </ul>
-          <small>They are already on the shopping list.</small>
+          <small>Ya están en la lista de la compra.</small>
         </div>
       )}
 
       <div className="toolbar">
-        <input className="input search" type="search" placeholder="Search food…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input className="input search" type="search" placeholder="Buscar alimento…" value={search} onChange={(e) => setSearch(e.target.value)} />
         <Button variant="primary" onClick={() => setEditing('new')}>
-          + Add
+          + Añadir
         </Button>
-        <Button onClick={onScanReceipt}>🧾 Receipt</Button>
+        <Button onClick={onScanReceipt}>🧾 Ticket</Button>
       </div>
 
       <div className="chips" role="tablist">
         {(['all', ...LOCATIONS] as Filter[]).map((f) => (
           <button key={f} type="button" role="tab" aria-selected={filter === f} className={`chip ${filter === f ? 'chip-active' : ''}`} onClick={() => setFilter(f)}>
-            {f === 'all' ? 'All' : `${LOCATION_ICON[f]} ${LOCATION_LABEL[f]}`}
+            {f === 'all' ? 'Todo' : `${LOCATION_ICON[f]} ${LOCATION_LABEL[f]}`}
             <span className="chip-count">{f === 'all' ? all.length : all.filter((i) => i.location === f).length}</span>
           </button>
         ))}
       </div>
 
-      {items.isPending && <p className="muted">Loading…</p>}
+      {items.isPending && <p className="muted">Cargando…</p>}
       {items.error && <p className="error">{items.error.message}</p>}
-      {items.isSuccess && visible.length === 0 && <p className="empty">Nothing here yet. Add food manually or from a receipt.</p>}
+      {items.isSuccess && visible.length === 0 && <p className="empty">Aquí no hay nada todavía. Añade alimentos a mano o desde un ticket.</p>}
 
       {(filter === 'all' ? LOCATIONS : [filter]).map((location) => {
         const group = visible.filter((item) => item.location === location);
@@ -92,7 +92,7 @@ export function InventoryPage({ onScanReceipt }: { onScanReceipt: () => void }) 
       })}
 
       {editing && (
-        <Modal title={editing === 'new' ? 'Add food' : `Edit ${editing.name}`} onClose={close}>
+        <Modal title={editing === 'new' ? 'Añadir alimento' : `Editar ${editing.name}`} onClose={close}>
           <FoodItemForm
             item={editing === 'new' ? undefined : editing}
             defaultLocation={filter === 'all' ? 'fridge' : filter}

@@ -21,7 +21,7 @@ export async function api<T>(method: Method, path: string, body?: unknown): Prom
   if (response.status === 204) return undefined as T;
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new ApiError(response.status, data.error ?? 'error', data.message ?? `Request failed (${response.status})`);
+    throw new ApiError(response.status, data.error ?? 'error', data.message ?? `La petición falló (${response.status})`);
   }
   return data as T;
 }

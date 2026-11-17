@@ -27,9 +27,9 @@ export class AuthService {
   ) {}
 
   async register(username: string, password: string, inviteCode: string): Promise<{ user: User; session: Session }> {
-    if (!safeEqual(inviteCode, this.inviteCode)) throw new AppError(403, 'invalid_invite', 'Invalid invite code');
+    if (!safeEqual(inviteCode, this.inviteCode)) throw new AppError(403, 'invalid_invite', 'El código de invitación no es correcto');
     const exists = this.db.prepare('SELECT 1 FROM users WHERE username = ?').get(username);
-    if (exists) throw new AppError(409, 'username_taken', 'Username already taken');
+    if (exists) throw new AppError(409, 'username_taken', 'Ese nombre de usuario ya existe');
 
     const user: User = { id: randomUUID(), username };
     this.db
@@ -44,7 +44,7 @@ export class AuthService {
       | undefined;
     // Verify against a dummy hash when the user is unknown so timing does not reveal valid usernames.
     const valid = await verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
-    if (!row || !valid) throw new AppError(401, 'invalid_credentials', 'Invalid username or password');
+    if (!row || !valid) throw new AppError(401, 'invalid_credentials', 'Usuario o contraseña incorrectos');
     return { user: { id: row.id, username: row.username }, session: this.createSession(row.id) };
   }
 
@@ -90,7 +90,7 @@ export class AttemptLimiter {
       return;
     }
     entry.count++;
-    if (entry.count > this.max) throw new AppError(429, 'too_many_attempts', 'Too many attempts, try again later');
+    if (entry.count > this.max) throw new AppError(429, 'too_many_attempts', 'Demasiados intentos. Vuelve a probar en unos minutos');
   }
 }
 

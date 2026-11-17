@@ -43,7 +43,7 @@ export function MealEditor({ meal, items, error, busy, onSave, onConsume, onUnco
   if (locked && meal) {
     return (
       <div className="form">
-        <p className="muted">Eaten. These quantities were taken from stock:</p>
+        <p className="muted">Hecha. Se descontaron estas cantidades del stock:</p>
         <ul className="plain-list">
           {meal.allocations.map((a) => (
             <li key={a.id}>
@@ -54,7 +54,7 @@ export function MealEditor({ meal, items, error, busy, onSave, onConsume, onUnco
         {error && <p className="error">{error}</p>}
         <div className="form-actions">
           <Button onClick={onUnconsume} disabled={busy}>
-            Undo (return to stock)
+            Deshacer (devolver al stock)
           </Button>
         </div>
       </div>
@@ -63,21 +63,21 @@ export function MealEditor({ meal, items, error, busy, onSave, onConsume, onUnco
 
   return (
     <form className="form" onSubmit={submit}>
-      <Field label="Dish (optional)">
-        <TextInput value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="e.g. Potato omelette" />
+      <Field label="Plato (opcional)">
+        <TextInput value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="p. ej. Tortilla de patatas" />
       </Field>
 
       <fieldset className="allocations">
-        <legend>Ingredients from your stock</legend>
+        <legend>Ingredientes de tu stock</legend>
         {rows.map((row, index) => {
           const item = itemById.get(row.foodItemId);
           return (
             <div className="allocation" key={index}>
               <select className="input" value={row.foodItemId} onChange={(e) => update(index, { foodItemId: e.target.value })} required>
-                <option value="">Choose food…</option>
+                <option value="">Elige un alimento…</option>
                 {items.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {LOCATION_ICON[i.location]} {i.name} ({formatQuantity(i.available, i.unit)} free)
+                    {LOCATION_ICON[i.location]} {i.name} ({formatQuantity(i.available, i.unit)} libre)
                   </option>
                 ))}
               </select>
@@ -85,20 +85,20 @@ export function MealEditor({ meal, items, error, busy, onSave, onConsume, onUnco
                 className="input qty"
                 value={row.quantity}
                 onChange={(e) => update(index, { quantity: e.target.value })}
-                aria-label="Quantity"
+                aria-label="Cantidad"
                 required
               />
               <span className="unit">{item ? UNIT_LABEL[item.unit] : ''}</span>
-              <button type="button" className="icon-btn" onClick={() => setRows((rs) => rs.filter((_, i) => i !== index))} aria-label="Remove ingredient">
+              <button type="button" className="icon-btn" onClick={() => setRows((rs) => rs.filter((_, i) => i !== index))} aria-label="Quitar ingrediente">
                 ✕
               </button>
             </div>
           );
         })}
         <Button size="sm" variant="ghost" onClick={() => setRows((rs) => [...rs, { foodItemId: '', quantity: '1' }])} disabled={items.length === 0}>
-          + Add ingredient
+          + Añadir ingrediente
         </Button>
-        {items.length === 0 && <p className="muted">Add food to your inventory first.</p>}
+        {items.length === 0 && <p className="muted">Primero añade alimentos a tu inventario.</p>}
       </fieldset>
 
       {error && <p className="error">{error}</p>}
@@ -106,15 +106,15 @@ export function MealEditor({ meal, items, error, busy, onSave, onConsume, onUnco
         {meal && (
           <>
             <Button variant="danger" onClick={onDelete} disabled={busy}>
-              Delete
+              Eliminar
             </Button>
-            <Button onClick={onConsume} disabled={busy || meal.allocations.length === 0} title="Take the ingredients out of stock">
-              Mark as eaten
+            <Button onClick={onConsume} disabled={busy || meal.allocations.length === 0} title="Descuenta los ingredientes del stock">
+              Marcar como hecha
             </Button>
           </>
         )}
         <Button variant="primary" type="submit" disabled={busy}>
-          Save
+          Guardar
         </Button>
       </div>
     </form>

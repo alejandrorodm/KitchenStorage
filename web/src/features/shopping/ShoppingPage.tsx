@@ -21,13 +21,13 @@ export function ShoppingPage() {
   return (
     <section className="page">
       <form className="toolbar" onSubmit={submit}>
-        <input className="input search" placeholder="Add something to buy…" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+        <input className="input search" placeholder="Añade algo que comprar…" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
         <Button variant="primary" type="submit" disabled={add.isPending || !name.trim()}>
-          Add
+          Añadir
         </Button>
       </form>
       {(add.error ?? act.error) && <p className="error">{(add.error ?? act.error)?.message}</p>}
-      {shopping.isSuccess && entries.length === 0 && <p className="empty">The list is empty. Items that run low are added automatically.</p>}
+      {shopping.isSuccess && entries.length === 0 && <p className="empty">La lista está vacía. Lo que se vaya acabando se añade solo.</p>}
 
       <ul className="list">
         {entries.map((entry) => (
@@ -42,10 +42,10 @@ export function ShoppingPage() {
 
       {checkedCount > 0 && (
         <Button className="block" onClick={() => act.mutate({ type: 'clear' })} disabled={act.isPending}>
-          Remove {checkedCount} bought
+          Quitar {checkedCount} comprados
         </Button>
       )}
-      <p className="muted small">Tip: add what you bought with a receipt photo and the automatic entries disappear by themselves.</p>
+      <p className="muted small">Consejo: añade la compra con la foto del ticket y los artículos automáticos desaparecen solos.</p>
     </section>
   );
 }

@@ -10,8 +10,9 @@ export default defineConfig({
       includeAssets: ['icon.svg'],
       manifest: {
         name: 'Kitchen Storage',
-        short_name: 'Kitchen',
-        description: 'Fridge, freezer and pantry stock, meal planner and shopping list',
+        lang: 'es',
+        short_name: 'Cocina',
+        description: 'Nevera, congelador y despensa, planificador de comidas y lista de la compra',
         theme_color: '#2f6f4f',
         background_color: '#f6f5f1',
         display: 'standalone',

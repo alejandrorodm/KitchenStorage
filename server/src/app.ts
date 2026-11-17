@@ -70,17 +70,17 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(multipart, { limits: { fileSize: MAX_RECEIPT_BYTES, files: 1 } });
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) {
-      return reply.code(400).send({ error: 'validation_error', message: 'Invalid request', issues: error.issues });
+      return reply.code(400).send({ error: 'validation_error', message: validationMessage(error), issues: error.issues });
     }
     if (error instanceof AppError) {
       return reply.code(error.statusCode).send({ error: error.code, message: error.message });
     }
     const statusCode = (error as { statusCode?: number }).statusCode;
     if (statusCode && statusCode < 500) {
-      return reply.code(statusCode).send({ error: 'bad_request', message: (error as Error).message });
+      return reply.code(statusCode).send({ error: 'bad_request', message: statusCode === 413 ? 'El archivo es demasiado grande' : 'Solicitud no válida' });
     }
     request.log.error(error);
-    return reply.code(500).send({ error: 'internal_error', message: 'Unexpected error' });
+    return reply.code(500).send({ error: 'internal_error', message: 'Error inesperado del servidor' });
   });
 
   app.get('/api/health', async () => ({ ok: true }));
@@ -113,11 +113,17 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     await app.register(fastifyStatic, { root: webDist, wildcard: false });
     app.setNotFoundHandler((request, reply) => {
       if (request.method !== 'GET' || request.url.startsWith('/api/')) {
-        return reply.code(404).send({ error: 'not_found', message: 'Route not found' });
+        return reply.code(404).send({ error: 'not_found', message: 'Ruta no encontrada' });
       }
       return reply.sendFile('index.html');
     });
   }
 
   return app;
+}
+
+/** Human-readable summary of the first invalid field, for display in the UI. */
+function validationMessage(error: ZodError): string {
+  const field = error.issues[0]?.path.join('.');
+  return field ? `Dato no válido en "${field}"` : 'Datos no válidos';
 }

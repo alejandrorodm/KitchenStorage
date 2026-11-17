@@ -85,7 +85,7 @@ export class InventoryService {
   }
 
   delete(id: string): void {
-    if (!this.items.delete(id)) throw notFound('Food item');
+    if (!this.items.delete(id)) throw notFound('No se encontró el alimento');
     this.afterStockChange();
   }
 
@@ -127,7 +127,7 @@ export class InventoryService {
 
   private mustGet(id: string): FoodItemView {
     const item = this.items.get(id);
-    if (!item) throw notFound('Food item');
+    if (!item) throw notFound('No se encontró el alimento');
     return item;
   }
 }
