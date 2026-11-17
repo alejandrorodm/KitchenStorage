@@ -78,3 +78,20 @@ docker compose stop app
 docker compose cp app:/app/data ./backup-$(date +%F)
 docker compose start app
 ```
+
+## Deploy without Docker (systemd + nginx)
+
+For a small VPS that already runs nginx. The app is built locally and only the result is copied, so the server needs Node 24 but no build tools.
+
+One-time setup on the VPS (as root):
+
+1. `useradd --system --home-dir /opt/kitchenstorage --shell /usr/sbin/nologin kitchen`, then `mkdir -p /opt/kitchenstorage/data` and `chown kitchen:kitchen /opt/kitchenstorage/data`.
+2. Create `/opt/kitchenstorage/.env` (mode 640, group `kitchen`) with `INVITE_CODE`, `GEMINI_API_KEY`, `DATABASE_PATH=/opt/kitchenstorage/data/kitchen.sqlite`, `WEB_DIST_PATH=/opt/kitchenstorage/app/web/dist`, `HOST=127.0.0.1`, `PORT=3232`, `COOKIE_SECURE=true`, `TRUST_PROXY=true`.
+3. Copy `deploy/kitchenstorage.service` to `/etc/systemd/system/` and run `systemctl enable kitchenstorage`.
+4. Copy `deploy/nginx-site.conf` to `/etc/nginx/sites-available/<domain>`, replace `<DOMAIN>`, link it into `sites-enabled`, run `nginx -t && systemctl reload nginx`, then `certbot --nginx -d <domain>`.
+
+Each release, from your machine:
+
+```bash
+deploy/deploy.sh vps   # "vps" is the SSH host; the previous build is kept in /opt/kitchenstorage/app.old
+```

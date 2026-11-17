@@ -1,0 +1,24 @@
+[Unit]
+Description=Kitchen Storage (API + web, single process)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kitchen
+Group=kitchen
+WorkingDirectory=/opt/kitchenstorage/app/server
+EnvironmentFile=/opt/kitchenstorage/.env
+ExecStart=/usr/bin/node dist/main.js
+Restart=always
+RestartSec=5
+MemoryHigh=150M
+MemoryMax=220M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/kitchenstorage/data
+
+[Install]
+WantedBy=multi-user.target
