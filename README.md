@@ -6,13 +6,15 @@ Household app to track what is in the **fridge, freezer and pantry**, plan **bre
 
 | Area | What it does |
 |------|--------------|
+| Today | Home screen with today's three meals, what is running out and what is left to buy. |
 | Inventory | Add, edit, delete and +/- items manually. Each item has a place, quantity, unit and a "warn me at" threshold. |
 | Receipts | Take a photo of a receipt; Gemini reads the food lines, you review them, and they are added to stock (merged with items of the same name, place and unit). |
 | Planner | Week view (Mon–Sun × breakfast/lunch/dinner). Assign food from stock to each meal. |
 | Count | Planned food is subtracted from the **available** count right away. **Mark as eaten** takes it out of stock; **Undo** puts back exactly what was taken. |
-| Alerts | An item is *running low* when available ≤ threshold and *out of stock* when available ≤ 0. Shown on the Kitchen tab with a badge. |
+| Alerts | An item is *running low* when available ≤ threshold and *out of stock* when available ≤ 0. Shown on the Today screen and as a badge on the Food (Alimentos) section. |
 | Shopping list | Low/out items are added automatically and removed once restocked. Manual entries can be added, checked and cleared. |
 | Sync | One shared household dataset. Changes are pushed to all devices via Server-Sent Events. |
+| Layout | Phones: bottom tab bar, day picker in the planner and bottom-sheet dialogs. Desktop: sidebar, storage zones side by side and the full week as a grid. Light and dark themes follow the device. |
 
 ## Architecture
 
