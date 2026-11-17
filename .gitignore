@@ -1,0 +1,12 @@
+node_modules/
+dist/
+data/
+.env
+*.sqlite
+*.sqlite-*
+.codegraph/
+.atl/
+*.apk
+*.aab
+*.keystore
+*.jks

@@ -1,0 +1,30 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      INVITE_CODE: ${INVITE_CODE:?Set INVITE_CODE in .env}
+      COOKIE_SECURE: "true"
+      TRUST_PROXY: "true"
+    volumes:
+      # Named volume: Docker initialises it with the image's ownership (user "node"),
+      # which a host bind mount would not.
+      - kitchen_data:/app/data
+
+  # Caddy obtains and renews the HTTPS certificate for DOMAIN automatically.
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command: caddy reverse-proxy --from ${DOMAIN:?Set DOMAIN in .env} --to app:3000
+    volumes:
+      - caddy_data:/data
+    depends_on:
+      - app
+
+volumes:
+  kitchen_data:
+  caddy_data:

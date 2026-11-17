@@ -1,0 +1,8 @@
+{
+  "name": "kitchenstorage-android",
+  "private": true,
+  "description": "Generates the Android app (Trusted Web Activity) with Bubblewrap; see README.md",
+  "dependencies": {
+    "@bubblewrap/core": "1.27.0"
+  }
+}
