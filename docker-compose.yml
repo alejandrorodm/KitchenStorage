@@ -1,0 +1,26 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      COOKIE_SECURE: "true"
+      TRUST_PROXY: "true"
+    volumes:
+      - ./data:/app/data
+
+  # Caddy obtains and renews the HTTPS certificate for DOMAIN automatically.
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command: caddy reverse-proxy --from ${DOMAIN:?Set DOMAIN in .env} --to app:3000
+    volumes:
+      - caddy_data:/data
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
