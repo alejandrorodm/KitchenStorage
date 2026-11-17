@@ -32,7 +32,7 @@ export function validationMessage(error: ZodError): string {
   const issue = error.issues[0];
   if (!issue) return 'Datos no válidos';
   const field = [...issue.path].reverse().find((segment) => typeof segment === 'string');
-  const label = field ? (FIELD_LABELS[field] ?? field) : 'Datos';
+  const label = field ? (Object.hasOwn(FIELD_LABELS, field) ? FIELD_LABELS[field] : field) : 'Datos';
   return `${label}: ${reason(issue)}`;
 }
 
@@ -62,7 +62,7 @@ function tooSmall(origin: string, minimum: number, inclusive: boolean): string {
 
 function tooBig(origin: string, maximum: number, inclusive: boolean): string {
   if (origin === 'string') return `no puede tener más de ${maximum} caracteres`;
-  if (origin === 'array') return `admite como máximo ${maximum} elementos`;
+  if (origin === 'array') return `admite como máximo ${maximum} elemento${maximum === 1 ? '' : 's'}`;
   return inclusive ? `debe ser menor o igual que ${maximum}` : `debe ser menor que ${maximum}`;
 }
 
