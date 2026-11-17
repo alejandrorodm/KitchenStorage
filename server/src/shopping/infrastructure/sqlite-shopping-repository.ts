@@ -64,11 +64,11 @@ export class SqliteShoppingRepository implements ShoppingRepository {
     return new Set(rows.map((r) => r.food_item_id));
   }
 
-  deleteUncheckedAuto(foodItemIds: string[]): number {
+  deleteAutoFor(foodItemIds: string[]): number {
     let removed = Number(
-      this.db.prepare("DELETE FROM shopping_items WHERE source = 'auto' AND checked = 0 AND food_item_id IS NULL").run().changes,
+      this.db.prepare("DELETE FROM shopping_items WHERE source = 'auto' AND food_item_id IS NULL").run().changes,
     );
-    const remove = this.db.prepare("DELETE FROM shopping_items WHERE source = 'auto' AND checked = 0 AND food_item_id = ?");
+    const remove = this.db.prepare("DELETE FROM shopping_items WHERE source = 'auto' AND food_item_id = ?");
     for (const id of foodItemIds) removed += Number(remove.run(id).changes);
     return removed;
   }

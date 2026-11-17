@@ -50,7 +50,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   // Composition root: wire adapters into the use cases.
   const foodItems = new SqliteFoodItemRepository(db);
-  const shopping = new ShoppingService(new SqliteShoppingRepository(db), () => events.publish('shopping'));
+  // Clearing bought entries re-adds items that are still low.
+  const shopping = new ShoppingService(new SqliteShoppingRepository(db), () => {
+    syncShopping();
+    events.publish('shopping');
+  });
   const syncShopping = () => shopping.syncWithStock(foodItems.list());
   const inventory = new InventoryService(foodItems, () => {
     syncShopping();

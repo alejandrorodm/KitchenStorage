@@ -51,6 +51,30 @@ describe('alerts and shopping list', () => {
     expect((await request({ method: 'GET', url: '/api/alerts' })).json()).toEqual([]);
   });
 
+  it('re-adds an item that runs out again after its checked entry was restocked', async () => {
+    const { request, list } = await setup();
+    const milk = (
+      await request({ method: 'POST', url: '/api/items', payload: { name: 'Leche', location: 'pantry', quantity: 0, unit: 'l' } })
+    ).json();
+    const [entry] = await list();
+    await request({ method: 'PATCH', url: `/api/shopping/${entry.id}`, payload: { checked: true } });
+
+    await request({ method: 'POST', url: `/api/items/${milk.id}/adjust`, payload: { delta: 6 } });
+    expect(await list()).toEqual([]);
+
+    await request({ method: 'POST', url: `/api/items/${milk.id}/adjust`, payload: { delta: -6 } });
+    expect(await list()).toMatchObject([{ foodItemId: milk.id, checked: false, status: 'out' }]);
+  });
+
+  it('re-adds a still-low item after its checked entry is cleared', async () => {
+    const { request, list } = await setup();
+    await request({ method: 'POST', url: '/api/items', payload: { name: 'Leche', location: 'pantry', quantity: 0, unit: 'l' } });
+    const [entry] = await list();
+    await request({ method: 'PATCH', url: `/api/shopping/${entry.id}`, payload: { checked: true } });
+    await request({ method: 'POST', url: '/api/shopping/clear-checked' });
+    expect(await list()).toMatchObject([{ name: 'Leche', checked: false }]);
+  });
+
   it('manages manual entries: add, check, clear checked and delete', async () => {
     const { request, list } = await setup();
     const bread = (await request({ method: 'POST', url: '/api/shopping', payload: { name: 'Pan', quantity: 2, unit: 'unit' } })).json();

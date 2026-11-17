@@ -29,8 +29,8 @@ export interface ShoppingRepository {
   delete(id: string): boolean;
   deleteChecked(): number;
   autoEntryFoodIds(): Set<string>;
-  /** Deletes unchecked auto entries whose food item is gone or listed in `foodItemIds`. */
-  deleteUncheckedAuto(foodItemIds: string[]): number;
+  /** Deletes auto entries (checked or not) whose food item is gone or listed in `foodItemIds`. */
+  deleteAutoFor(foodItemIds: string[]): number;
   runAtomically<T>(work: () => T): T;
 }
 
@@ -80,8 +80,9 @@ export class ShoppingService {
 
   /**
    * Keeps automatic entries in line with stock: every low or out item gets
-   * exactly one entry, and pending automatic entries disappear once the item
-   * is back above its threshold (or deleted). Returns whether anything changed.
+   * exactly one entry, and automatic entries disappear once the item is back
+   * above its threshold (or deleted), so it is listed again if it runs out
+   * later. Returns whether anything changed.
    */
   syncWithStock(items: FoodItemView[]): boolean {
     return this.entries.runAtomically(() => {
@@ -102,7 +103,7 @@ export class ShoppingService {
         changed = true;
       }
       const restocked = items.filter((item) => item.status === 'ok').map((item) => item.id);
-      return this.entries.deleteUncheckedAuto(restocked) > 0 || changed;
+      return this.entries.deleteAutoFor(restocked) > 0 || changed;
     });
   }
 }
