@@ -4,10 +4,13 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      INVITE_CODE: ${INVITE_CODE:?Set INVITE_CODE in .env}
       COOKIE_SECURE: "true"
       TRUST_PROXY: "true"
     volumes:
-      - ./data:/app/data
+      # Named volume: Docker initialises it with the image's ownership (user "node"),
+      # which a host bind mount would not.
+      - kitchen_data:/app/data
 
   # Caddy obtains and renews the HTTPS certificate for DOMAIN automatically.
   caddy:
@@ -23,4 +26,5 @@ services:
       - app
 
 volumes:
+  kitchen_data:
   caddy_data:

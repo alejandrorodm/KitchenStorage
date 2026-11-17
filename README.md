@@ -69,4 +69,10 @@ docker compose up -d --build
 
 Open `https://<DOMAIN>`, create an account with the invite code, and use "Add to Home screen" / "Install app" on each device.
 
-Data lives in `./data/kitchen.sqlite`. Back it up with `sqlite3 data/kitchen.sqlite ".backup backup.sqlite"` (safe while running).
+Data lives in the `kitchen_data` Docker volume (`/app/data/kitchen.sqlite` inside the container). To back it up:
+
+```bash
+docker compose stop app
+docker compose cp app:/app/data ./backup-$(date +%F)
+docker compose start app
+```
