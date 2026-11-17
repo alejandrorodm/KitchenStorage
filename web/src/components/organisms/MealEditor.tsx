@@ -43,7 +43,7 @@ export function MealEditor({ meal, items, error, busy, onSave, onConsume, onUnco
   if (locked && meal) {
     return (
       <div className="form">
-        <p className="muted">Hecha. Se descontaron estas cantidades del stock:</p>
+        <p className="muted">Consumida. Se descontaron estas cantidades del stock:</p>
         <ul className="plain-list">
           {meal.allocations.map((a) => (
             <li key={a.id}>
@@ -109,7 +109,7 @@ export function MealEditor({ meal, items, error, busy, onSave, onConsume, onUnco
               Eliminar
             </Button>
             <Button onClick={onConsume} disabled={busy || meal.allocations.length === 0} title="Descuenta los ingredientes del stock">
-              Marcar como hecha
+              Marcar como consumida
             </Button>
           </>
         )}

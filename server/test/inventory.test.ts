@@ -41,6 +41,17 @@ describe('inventory', () => {
     const res = await request({ method: 'POST', url: '/api/items', payload: { name: '', location: 'garage', quantity: -1, unit: 'unit' } });
     expect(res.statusCode).toBe(400);
     expect(res.json()).toMatchObject({ error: 'validation_error' });
+
+    const cases: [Record<string, unknown>, string][] = [
+      [{ name: 'Leche', location: 'pantry', quantity: -1, unit: 'l' }, 'Cantidad: debe ser mayor o igual que 0'],
+      [{ name: 'Leche', location: 'garage', quantity: 1, unit: 'l' }, 'Ubicación: no es una opción válida'],
+      [{ name: '', location: 'pantry', quantity: 1, unit: 'l' }, 'Nombre: no puede estar vacío'],
+      [{ location: 'pantry', quantity: 1, unit: 'l' }, 'Nombre: falta o no es válido'],
+    ];
+    for (const [payload, message] of cases) {
+      const invalid = await request({ method: 'POST', url: '/api/items', payload });
+      expect(invalid.json().message).toBe(message);
+    }
   });
 
   it('publishes a change event when stock changes', async () => {

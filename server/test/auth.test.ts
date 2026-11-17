@@ -22,6 +22,24 @@ describe('auth', () => {
     expect(write.statusCode).toBe(401);
   });
 
+  it('explains in Spanish why a username is invalid', async () => {
+    app = await createTestApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: { username: 'ana garcía', password: 'correct horse battery', inviteCode: INVITE_CODE },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'validation_error', message: 'Usuario: solo letras, números, punto, guion o guion bajo, sin espacios' });
+
+    const short = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: { username: 'ana', password: 'corto', inviteCode: INVITE_CODE },
+    });
+    expect(short.json().message).toBe('Contraseña: debe tener al menos 8 caracteres');
+  });
+
   it('rejects registration with a wrong invite code', async () => {
     app = await createTestApp();
     const res = await app.inject({

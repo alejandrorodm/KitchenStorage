@@ -58,7 +58,7 @@ export class MealPlanService {
     if (missing.length) throw notFound(`No se encontraron estos alimentos: ${missing.join(', ')}`);
 
     const existing = this.meals.findSlot(date, mealType);
-    if (existing?.consumed) throw conflict('Esta comida ya está marcada como hecha; deshazlo antes de editarla');
+    if (existing?.consumed) throw conflict('Ya está marcada como consumida; deshazlo antes de editarla');
 
     const id = existing?.id ?? randomUUID();
     this.meals.runAtomically(() =>
@@ -82,7 +82,7 @@ export class MealPlanService {
   }
 
   delete(id: string): void {
-    if (!this.meals.delete(id)) throw notFound('No se encontró la comida');
+    if (!this.meals.delete(id)) throw notFound('No se encontró esa entrada del menú');
     this.afterChange();
   }
 
@@ -96,7 +96,7 @@ export class MealPlanService {
 
   private mustGet(id: string): Meal {
     const meal = this.meals.get(id);
-    if (!meal) throw notFound('No se encontró la comida');
+    if (!meal) throw notFound('No se encontró esa entrada del menú');
     return meal;
   }
 }

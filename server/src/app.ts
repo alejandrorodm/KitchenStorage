@@ -18,6 +18,7 @@ import { registerReceiptRoutes } from './receipts/infrastructure/receipt-routes.
 import { openDatabase } from './shared/db.js';
 import { AppError } from './shared/errors.js';
 import { ChangeEvents } from './shared/events.js';
+import { validationMessage } from './shared/validation-message.js';
 import { ShoppingService } from './shopping/application/shopping-service.js';
 import { registerShoppingRoutes } from './shopping/infrastructure/shopping-routes.js';
 import { SqliteShoppingRepository } from './shopping/infrastructure/sqlite-shopping-repository.js';
@@ -120,10 +121,4 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   }
 
   return app;
-}
-
-/** Human-readable summary of the first invalid field, for display in the UI. */
-function validationMessage(error: ZodError): string {
-  const field = error.issues[0]?.path.join('.');
-  return field ? `Dato no válido en "${field}"` : 'Datos no válidos';
 }

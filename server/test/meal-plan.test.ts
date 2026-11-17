@@ -65,6 +65,7 @@ describe('meal planner', () => {
 
     const edit = await request({ method: 'PUT', url: '/api/meals/2026-11-18/dinner', payload: { allocations: [] } });
     expect(edit.statusCode).toBe(409);
+    expect(edit.json().message).toBe('Ya está marcada como consumida; deshazlo antes de editarla');
 
     await request({ method: 'POST', url: `/api/meals/${meal.id}/unconsume` });
     expect(await item(eggs.id)).toMatchObject({ quantity: 6, planned: 4, available: 2 });
@@ -88,6 +89,7 @@ describe('meal planner', () => {
     expect(unknown.statusCode).toBe(404);
     const badDate = await request({ method: 'PUT', url: '/api/meals/2026-13-40/dinner', payload: {} });
     expect(badDate.statusCode).toBe(400);
+    expect(badDate.json().message).toBe('Fecha: no tiene un formato válido');
     const badType = await request({ method: 'PUT', url: '/api/meals/2026-11-18/brunch', payload: {} });
     expect(badType.statusCode).toBe(400);
   });
