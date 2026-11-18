@@ -1,4 +1,5 @@
 import { AppError } from '../../shared/errors.js';
+import { isPushServiceEndpoint } from '../domain/push-endpoint.js';
 import { stockAlertMessages, type StockAlert } from '../domain/stock-alert-messages.js';
 
 /** Where and how to reach one browser, as given by its PushManager subscription. */
@@ -54,7 +55,8 @@ export class PushNotifier {
   async notifyStockAlerts(householdId: string, alerts: StockAlert[]): Promise<void> {
     const sender = this.sender;
     if (!sender || alerts.length === 0) return;
-    const targets = this.subscriptions.forHousehold(householdId);
+    // Re-checked at send time too, so a row stored before a rule change can never reach another host.
+    const targets = this.subscriptions.forHousehold(householdId).filter((target) => isPushServiceEndpoint(target.endpoint));
     const payloads = stockAlertMessages(alerts).map((message) => JSON.stringify(message));
     await Promise.all(
       targets.flatMap((target) =>

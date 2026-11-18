@@ -2,21 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireUser } from '../../auth/auth-routes.js';
 import type { PushNotifier } from '../application/push-notifier.js';
+import { isPushServiceEndpoint } from '../domain/push-endpoint.js';
 
-// The server sends requests to these endpoints, so only real browser push services are accepted.
-const PUSH_SERVICE_HOSTS = [/^fcm\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /^web\.push\.apple\.com$/, /^[a-z0-9-]+\.notify\.windows\.com$/];
-
-const endpoint = z
-  .string()
-  .max(2048)
-  .refine((value) => {
-    try {
-      const url = new URL(value);
-      return url.protocol === 'https:' && !url.port && PUSH_SERVICE_HOSTS.some((host) => host.test(url.hostname));
-    } catch {
-      return false;
-    }
-  }, 'El servicio de notificaciones no es válido');
+const endpoint = z.string().max(2048).refine(isPushServiceEndpoint, 'El servicio de notificaciones no es válido');
 
 const subscription = z.object({
   endpoint,

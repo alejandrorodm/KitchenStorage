@@ -15,7 +15,10 @@ export class WebPushSender implements PushSender {
     readonly publicKey: string,
     private readonly privateKey: string,
     private readonly subject: string,
-  ) {}
+  ) {
+    // Throws at startup on malformed keys or a subject that is not a mailto: or https: URL.
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+  }
 
   async send(target: PushTarget, payload: string): Promise<'sent' | 'gone'> {
     try {

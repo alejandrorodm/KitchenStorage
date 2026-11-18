@@ -66,6 +66,14 @@ describe('push notifications', () => {
       { ...subscription('x'), endpoint: 'https://evil.example.com/push' },
       { ...subscription('x'), endpoint: 'http://fcm.googleapis.com/fcm/send/x' },
       { ...subscription('x'), endpoint: 'https://fcm.googleapis.com.evil.com/x' },
+      // Parser-mismatch bypasses: web-push's legacy url.parse would send these to another host.
+      { ...subscription('x'), endpoint: 'https://localhost%2enotify.windows.com/x' },
+      { ...subscription('x'), endpoint: 'https://kitchen%2enotify.windows.com/admin' },
+      { ...subscription('x'), endpoint: 'https:fcm.googleapis.com/x' },
+      { ...subscription('x'), endpoint: 'https://fcm%2egoogleapis.com/y' },
+      { ...subscription('x'), endpoint: 'https://evil@fcm.googleapis.com/x' },
+      { ...subscription('x'), endpoint: 'https://FCM.googleapis.com/x' },
+      { ...subscription('x'), endpoint: ' https://fcm.googleapis.com/x' },
       { endpoint: endpoint('x') },
     ]) {
       expect((await ana({ method: 'POST', url: '/api/push/subscriptions', payload })).statusCode).toBe(400);
@@ -188,12 +196,14 @@ describe('WebPushSender', () => {
     const { default: webpush } = await import('web-push');
     const { WebPushSender } = await import('../src/notifications/infrastructure/web-push-sender.js');
     const send = vi.spyOn(webpush, 'sendNotification');
-    const sender = new WebPushSender('pub', 'priv', 'https://example.test');
+    const keys = webpush.generateVAPIDKeys();
+    expect(() => new WebPushSender(keys.publicKey, keys.privateKey, 'not-a-url')).toThrow();
+    const sender = new WebPushSender(keys.publicKey, keys.privateKey, 'https://example.test');
     const target = { endpoint: endpoint('x'), p256dh: 'p', auth: 'a' };
     try {
       send.mockResolvedValueOnce({ statusCode: 201, body: '', headers: {} });
       expect(await sender.send(target, 'hi')).toBe('sent');
-      expect(send.mock.calls[0]![2]).toMatchObject({ TTL: 43200, timeout: 10000, vapidDetails: { publicKey: 'pub', privateKey: 'priv' } });
+      expect(send.mock.calls[0]![2]).toMatchObject({ TTL: 43200, timeout: 10000, vapidDetails: { publicKey: keys.publicKey, privateKey: keys.privateKey } });
       for (const statusCode of [401, 403, 404, 410]) {
         send.mockRejectedValueOnce(Object.assign(new Error('rejected'), { statusCode }));
         expect(await sender.send(target, 'hi')).toBe('gone');
