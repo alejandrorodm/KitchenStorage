@@ -8,6 +8,7 @@ import { useToast } from '../../components/atoms/Toast';
 import { InviteCode } from '../../components/molecules/InviteCode';
 import { PageHeader } from '../../components/molecules/PageHeader';
 import { alertLabel } from '../../shared/labels';
+import { PushSettings } from './PushSettings';
 
 /** The signed-in user's household: its code to invite people and who is in it. */
 export function HouseholdPage() {
@@ -53,6 +54,8 @@ export function HouseholdPage() {
           </section>
 
           <AlertSettings household={data} />
+
+          <PushSettings />
 
           <section className="panel" aria-labelledby="household-members">
             <div className="panel-head">

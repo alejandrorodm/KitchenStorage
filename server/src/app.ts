@@ -22,6 +22,9 @@ import { openDatabase, type Db } from './shared/db.js';
 import { AppError } from './shared/errors.js';
 import { ChangeEvents } from './shared/events.js';
 import { validationMessage } from './shared/validation-message.js';
+import { PushNotifier, type PushSender } from './notifications/application/push-notifier.js';
+import { registerPushRoutes } from './notifications/infrastructure/push-routes.js';
+import { SqlitePushSubscriptionRepository } from './notifications/infrastructure/sqlite-push-subscription-repository.js';
 import { ShoppingService } from './shopping/application/shopping-service.js';
 import { registerShoppingRoutes } from './shopping/infrastructure/shopping-routes.js';
 import { SqliteShoppingRepository } from './shopping/infrastructure/sqlite-shopping-repository.js';
@@ -29,6 +32,8 @@ import { SqliteShoppingRepository } from './shopping/infrastructure/sqlite-shopp
 export interface AppOptions {
   databasePath: string;
   receiptParser: ReceiptParser | null;
+  /** Web Push delivery; without it, push notifications are disabled. */
+  pushSender?: PushSender | null;
   cookieSecure: boolean;
   webDistPath?: string;
   logger?: boolean;
@@ -55,10 +60,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.decorate('changeEvents', events);
   app.decorate('auth', auth);
   app.decorate('households', households);
+  const notifier = new PushNotifier(new SqlitePushSubscriptionRepository(db), options.pushSender ?? null, app.log);
   app.addHook('onClose', async () => db.close());
 
   // Each request works on the kitchen of the signed-in user's household.
-  const kitchenFor = (request: FastifyRequest) => kitchen(db, requireUser(request).householdId, events, options.receiptParser);
+  const kitchenFor = (request: FastifyRequest) => kitchen(db, requireUser(request).householdId, events, options.receiptParser, notifier);
 
   await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: MAX_RECEIPT_BYTES, files: 1 } });
@@ -86,6 +92,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerInventoryRoutes(app, (request) => kitchenFor(request).inventory);
   registerMealPlanRoutes(app, (request) => kitchenFor(request).meals);
   registerShoppingRoutes(app, (request) => kitchenFor(request).shopping);
+  registerPushRoutes(app, notifier);
   registerReceiptRoutes(app, (request) => kitchenFor(request).receipts);
 
   // Server-sent events: every device of the household refetches the topics that changed.
@@ -122,20 +129,25 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 }
 
 /** Composition root for one household: wires its adapters into the use cases. */
-function kitchen(db: Db, householdId: string, events: ChangeEvents, receiptParser: ReceiptParser | null) {
+function kitchen(db: Db, householdId: string, events: ChangeEvents, receiptParser: ReceiptParser | null, notifier: PushNotifier) {
   const foodItems = new SqliteFoodItemRepository(db, householdId);
-  // Clearing bought entries re-adds items that are still low.
+  // Clearing bought entries re-adds items that are still low; that is not news, so no push.
   const shopping = new ShoppingService(new SqliteShoppingRepository(db, householdId), () => {
     syncShopping();
     events.publish(householdId, 'shopping');
   });
   const syncShopping = () => shopping.syncWithStock(foodItems.list());
+  // A stock change that puts items on the list tells the household's devices (in the background).
+  const syncAndNotify = () => {
+    const alerts = syncShopping().map(({ id, name, status }) => ({ id, name, status: status === 'out' ? ('out' as const) : ('low' as const) }));
+    if (alerts.length > 0) void notifier.notifyStockAlerts(householdId, alerts);
+  };
   const inventory = new InventoryService(foodItems, () => {
-    syncShopping();
+    syncAndNotify();
     events.publish(householdId, 'inventory', 'shopping');
   });
   const meals = new MealPlanService(new SqliteMealPlanRepository(db, householdId), () => {
-    syncShopping();
+    syncAndNotify();
     events.publish(householdId, 'meals', 'inventory', 'shopping');
   });
   const receipts = new ReceiptService(receiptParser, inventory);

@@ -29,6 +29,8 @@ export default defineConfig({
         // Latin fonts are cached so the installed app keeps its typography offline.
         globPatterns: ['**/*.{js,css,html,svg,webmanifest}', 'assets/*-latin-*.woff2'],
         navigateFallbackDenylist: [/^\/api\//],
+        // Push and notification-click handlers live in public/push-sw.js.
+        importScripts: ['push-sw.js'],
         runtimeCaching: [],
       },
     }),

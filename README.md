@@ -15,6 +15,7 @@ Household app to track what is in the **fridge, freezer and pantry**, plan **bre
 | Shopping list | Low/out items are added automatically and removed once restocked. Manual entries can be added, checked and cleared. |
 | Households | Each household has its own food, menu and shopping list. Registration needs a code: a household's own code (shown in **Mi casa**) joins that household; a single-use code from an admin creates a new household. |
 | Admin | Admins get an **Admin** section to generate and revoke single-use codes and see every household. |
+| Push notifications | Each device can turn them on in **Mi casa**. When items start running low or run out, every subscribed device of the household gets one notification per item (up to 3) or one summary ("5 alimentos se han acabado"). Tapping it opens the shopping list. Works in the Android app and installed PWAs. |
 | Sync | Changes are pushed to every device of the same household via Server-Sent Events. |
 | Layout | Phones: bottom tab bar, day picker in the planner and bottom-sheet dialogs. Desktop: sidebar, storage zones side by side and the full week as a grid. Light and dark themes follow the device. |
 
@@ -39,6 +40,8 @@ Environment variables (put them in a `.env` file at the repository root):
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | no | Free key from <https://aistudio.google.com/apikey>. Without it, receipt reading is disabled. |
 | `GEMINI_MODEL` | no | Defaults to `gemini-flash-latest`. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | no | Web Push keys; generate once with `npx web-push generate-vapid-keys`. Without them, push notifications are disabled. Changing them invalidates every device's subscription. |
+| `VAPID_SUBJECT` | no | Contact for push services (`mailto:` or `https:` URL). Defaults to `https://kitchen.alejandrorodm.com`. |
 | `DOMAIN` | compose | Public domain pointing at the VPS; Caddy gets the HTTPS certificate for it. |
 | `DATABASE_PATH` | no | Defaults to `data/kitchen.sqlite`. |
 | `PORT` | no | Defaults to `3000`. |

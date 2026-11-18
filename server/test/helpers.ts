@@ -1,5 +1,5 @@
 import type { FastifyInstance, InjectOptions } from 'fastify';
-import { buildApp } from '../src/app.js';
+import { buildApp, type AppOptions } from '../src/app.js';
 import type { ReceiptParser } from '../src/receipts/application/receipt-service.js';
 
 export const PASSWORD = 'correct horse battery';
@@ -13,8 +13,8 @@ export const fakeReceiptParser: ReceiptParser = {
   },
 };
 
-export async function createTestApp(receiptParser: ReceiptParser | null = fakeReceiptParser) {
-  return buildApp({ databasePath: ':memory:', receiptParser, cookieSecure: false });
+export async function createTestApp(receiptParser: ReceiptParser | null = fakeReceiptParser, options: Partial<AppOptions> = {}) {
+  return buildApp({ databasePath: ':memory:', receiptParser, cookieSecure: false, ...options });
 }
 
 /** A single-use code that creates a new household, as an admin would generate it. */
