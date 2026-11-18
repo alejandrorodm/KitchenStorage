@@ -67,6 +67,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       return reply.code(400).send({ error: 'validation_error', message: validationMessage(error), issues: error.issues });
     }
     if (error instanceof AppError) {
+      // Upstream failures (e.g. the receipt reader) keep the real reason only in the log.
+      if (error.statusCode >= 500 && error.cause) request.log.error({ err: error.cause }, error.message);
       return reply.code(error.statusCode).send({ error: error.code, message: error.message });
     }
     const statusCode = (error as { statusCode?: number }).statusCode;

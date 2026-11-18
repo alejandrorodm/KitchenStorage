@@ -49,7 +49,8 @@ export class GeminiReceiptParser implements ReceiptParser {
     apiKey: string,
     private readonly model: string,
   ) {
-    this.client = new GoogleGenAI({ apiKey });
+    // Structured JSON output (responseJsonSchema) is only served by v1beta; the SDK defaults to v1.
+    this.client = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
   }
 
   async parse(image: Buffer, mimeType: string): Promise<ReceiptLine[]> {
