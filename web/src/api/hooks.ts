@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { disablePush } from '../shared/push';
 import { api } from './client';
 import type { FoodItem, FoodItemInput, Household, HouseholdSummary, Invite, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
 
@@ -9,6 +10,7 @@ export const keys = {
   shopping: ['shopping'] as const,
   receiptStatus: ['receipts', 'status'] as const,
   household: ['household'] as const,
+  push: ['push'] as const,
   invites: ['admin', 'invites'] as const,
   households: ['admin', 'households'] as const,
 };
@@ -40,7 +42,11 @@ export function useLogin(mode: 'login' | 'register') {
 export function useLogout() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => api<void>('POST', '/api/auth/logout'),
+    // This device stops receiving the household's notifications once nobody is signed in.
+    mutationFn: async () => {
+      await disablePush().catch(() => undefined);
+      await api<void>('POST', '/api/auth/logout');
+    },
     onSuccess: () => {
       client.removeQueries({ predicate: (query) => query.queryKey[0] !== keys.me[0] });
       client.setQueryData(keys.me, null);
@@ -175,6 +181,10 @@ export function useUpdateHousehold() {
       return invalidate();
     },
   });
+}
+
+export function usePushKey() {
+  return useQuery({ queryKey: keys.push, queryFn: () => api<{ publicKey: string | null }>('GET', '/api/push'), staleTime: Infinity });
 }
 
 export function useRegenerateHouseholdCode() {

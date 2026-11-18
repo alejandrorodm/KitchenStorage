@@ -82,12 +82,12 @@ export class ShoppingService {
    * Keeps automatic entries in line with stock: every low or out item gets
    * exactly one entry, and automatic entries disappear once the item is back
    * above its threshold (or deleted), so it is listed again if it runs out
-   * later. Returns whether anything changed.
+   * later. Returns the items that were just listed, i.e. that started needing a restock.
    */
-  syncWithStock(items: FoodItemView[]): boolean {
+  syncWithStock(items: FoodItemView[]): FoodItemView[] {
     return this.entries.runAtomically(() => {
       const listed = this.entries.autoEntryFoodIds();
-      let changed = false;
+      const added: FoodItemView[] = [];
       for (const item of items) {
         if (item.status === 'ok' || listed.has(item.id)) continue;
         this.entries.insert({
@@ -100,10 +100,11 @@ export class ShoppingService {
           checked: false,
           createdAt: this.now().toISOString(),
         });
-        changed = true;
+        added.push(item);
       }
       const restocked = items.filter((item) => item.status === 'ok').map((item) => item.id);
-      return this.entries.deleteAutoFor(restocked) > 0 || changed;
+      this.entries.deleteAutoFor(restocked);
+      return added;
     });
   }
 }

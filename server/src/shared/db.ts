@@ -153,6 +153,18 @@ export const MIGRATIONS: Migration[] = [
         WHERE a.food_item_id = f.id AND m.consumed = 0), 0) > COALESCE(f.low_threshold, 0)
     );
   `,
+  // v4: devices that receive push notifications.
+  `
+    CREATE TABLE push_subscriptions (
+      endpoint TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX push_subscriptions_household ON push_subscriptions (household_id);
+  `,
 ];
 
 export function openDatabase(path: string): Db {

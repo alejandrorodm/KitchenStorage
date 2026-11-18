@@ -39,6 +39,8 @@ async function main() {
   // Signing happens after the Gradle build (apksigner), not inside it.
   twaManifest.signingKey = { path: './android.keystore', alias: 'kitchenstorage' };
   // The default (21) is below the minimum androidbrowserhelper requires (24).
+  // Lets the web app's push notifications show as Android notifications.
+  twaManifest.enableNotifications = true;
   twaManifest.minSdkVersion = 24;
 
   const generator = new TwaGenerator();
