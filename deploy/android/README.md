@@ -10,6 +10,7 @@ The `.github/workflows/android-apk.yml` workflow runs on every push (and manuall
 2. `generate-project.cjs` generates the Android project with [`@bubblewrap/core`](https://github.com/GoogleChromeLabs/bubblewrap) (pinned in `package.json`/`package-lock.json`), using the run number as `versionCode`.
 3. `build-apk.sh` runs Gradle and aligns the APK in a step with no secrets (Gradle downloads code from the network); `sign-apk.sh` then signs it with `apksigner` in a separate step that is the only one given the signing secrets.
 4. The signed APK is uploaded as the artifact `kitchen-storage-apk-<run number>` (kept 30 days).
+5. On `main`, a second job without access to the signing secrets publishes it as the release `apk-<run number>`.
 
 ## Signing key
 
