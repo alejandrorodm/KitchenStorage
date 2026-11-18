@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import type { ServerResponse } from 'node:http';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
@@ -105,6 +106,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerAssistantRoutes(app, (request) => kitchenFor(request).assistant);
 
   // Server-sent events: every device of the household refetches the topics that changed.
+  // Open streams never end on their own, so they are ended on shutdown; otherwise a restart waits for them.
+  const streams = new Set<ServerResponse>();
+  app.addHook('preClose', async () => {
+    for (const stream of streams) stream.end();
+  });
   app.get('/api/events', (request, reply) => {
     const { householdId } = requireUser(request);
     reply.hijack();
@@ -117,7 +123,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     reply.raw.write('retry: 3000\n\n');
     const unsubscribe = events.subscribe(householdId, (topics) => reply.raw.write(`data: ${JSON.stringify({ topics })}\n\n`));
     const heartbeat = setInterval(() => reply.raw.write(': ping\n\n'), HEARTBEAT_MS);
+    streams.add(reply.raw);
     request.raw.on('close', () => {
+      streams.delete(reply.raw);
       clearInterval(heartbeat);
       unsubscribe();
     });
