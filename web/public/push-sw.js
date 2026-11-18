@@ -24,8 +24,12 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
       const open = windows.find((client) => new URL(client.url).origin === self.location.origin);
-      if (open) return open.navigate(url).then((client) => (client || open).focus());
-      return self.clients.openWindow(url);
+      if (!open) return self.clients.openWindow(url);
+      // navigate() only works on windows this worker controls; otherwise just bring the app forward.
+      return open
+        .navigate(url)
+        .then((client) => (client || open).focus())
+        .catch(() => open.focus());
     }),
   );
 });

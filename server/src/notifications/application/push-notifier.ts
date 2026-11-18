@@ -62,7 +62,9 @@ export class PushNotifier {
           try {
             if ((await sender.send(target, payload)) === 'gone') this.subscriptions.forget(target.endpoint);
           } catch (error) {
-            this.log.error({ err: error, host: new URL(target.endpoint).host }, 'push notification failed');
+            // The endpoint is a bearer URL and push errors echo it back, so only the host and status are logged.
+            const { statusCode } = error as { statusCode?: number };
+            this.log.error({ host: new URL(target.endpoint).host, statusCode }, 'push notification failed');
           }
         }),
       ),

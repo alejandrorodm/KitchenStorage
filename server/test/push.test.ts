@@ -168,3 +168,40 @@ describe('stockAlertMessages', () => {
     expect(stockAlertMessages([...out.slice(0, 3), alert('H', 'low')])[0]!.title).toBe('4 alimentos se han acabado o se están acabando');
   });
 });
+
+describe('push limits and delivery', () => {
+  it('keeps only the 10 most recent devices per user', async () => {
+    const push = fakeSender();
+    app = await createTestApp(undefined, { pushSender: push.sender });
+    const ana = await signedIn(app, 'ana');
+    for (let n = 1; n <= 12; n++) await ana({ method: 'POST', url: '/api/push/subscriptions', payload: subscription(`d${n}`) });
+    const milk = (await ana({ method: 'POST', url: '/api/items', payload: item('Leche') })).json();
+    await ana({ method: 'POST', url: `/api/items/${milk.id}/adjust`, payload: { delta: -1 } });
+    await vi.waitFor(() => expect(push.sent).toHaveLength(10));
+    expect(push.sent.map((s) => s.endpoint)).not.toContain(endpoint('d1'));
+    expect(push.sent.map((s) => s.endpoint)).not.toContain(endpoint('d2'));
+  });
+});
+
+describe('WebPushSender', () => {
+  it('sends with a timeout and treats expired or foreign-key subscriptions as gone', async () => {
+    const { default: webpush } = await import('web-push');
+    const { WebPushSender } = await import('../src/notifications/infrastructure/web-push-sender.js');
+    const send = vi.spyOn(webpush, 'sendNotification');
+    const sender = new WebPushSender('pub', 'priv', 'https://example.test');
+    const target = { endpoint: endpoint('x'), p256dh: 'p', auth: 'a' };
+    try {
+      send.mockResolvedValueOnce({ statusCode: 201, body: '', headers: {} });
+      expect(await sender.send(target, 'hi')).toBe('sent');
+      expect(send.mock.calls[0]![2]).toMatchObject({ TTL: 43200, timeout: 10000, vapidDetails: { publicKey: 'pub', privateKey: 'priv' } });
+      for (const statusCode of [401, 403, 404, 410]) {
+        send.mockRejectedValueOnce(Object.assign(new Error('rejected'), { statusCode }));
+        expect(await sender.send(target, 'hi')).toBe('gone');
+      }
+      send.mockRejectedValueOnce(Object.assign(new Error('busy'), { statusCode: 429 }));
+      await expect(sender.send(target, 'hi')).rejects.toThrow('busy');
+    } finally {
+      send.mockRestore();
+    }
+  });
+});

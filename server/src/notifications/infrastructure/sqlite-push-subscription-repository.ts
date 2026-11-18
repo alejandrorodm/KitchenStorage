@@ -1,6 +1,9 @@
 import type { Db } from '../../shared/db.js';
 import type { PushSubscriptionRepository, PushTarget } from '../application/push-notifier.js';
 
+/** Each user keeps at most this many devices; subscribing another drops the oldest. */
+export const MAX_DEVICES_PER_USER = 10;
+
 export class SqlitePushSubscriptionRepository implements PushSubscriptionRepository {
   constructor(
     private readonly db: Db,
@@ -16,6 +19,12 @@ export class SqlitePushSubscriptionRepository implements PushSubscriptionReposit
            p256dh = excluded.p256dh, auth = excluded.auth`,
       )
       .run(target.endpoint, userId, householdId, target.p256dh, target.auth, this.now().toISOString());
+    this.db
+      .prepare(
+        `DELETE FROM push_subscriptions WHERE user_id = ?1 AND endpoint NOT IN (
+           SELECT endpoint FROM push_subscriptions WHERE user_id = ?1 ORDER BY created_at DESC, rowid DESC LIMIT ?2)`,
+      )
+      .run(userId, MAX_DEVICES_PER_USER);
   }
 
   delete(endpoint: string, userId: string): void {

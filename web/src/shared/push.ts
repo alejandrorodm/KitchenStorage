@@ -5,20 +5,30 @@ export function pushSupported(): boolean {
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 }
 
-export async function currentSubscription(): Promise<PushSubscription | null> {
+/** The app's service worker, or null when none is registered (never waits like `serviceWorker.ready`). */
+async function registration(): Promise<ServiceWorkerRegistration | null> {
   if (!pushSupported()) return null;
-  const registration = await navigator.serviceWorker.ready;
-  return registration.pushManager.getSubscription();
+  return (await navigator.serviceWorker.getRegistration()) ?? null;
+}
+
+export async function currentSubscription(): Promise<PushSubscription | null> {
+  return (await (await registration())?.pushManager.getSubscription()) ?? null;
 }
 
 /** Asks for permission (if needed), subscribes this device and registers it with the server. */
 export async function enablePush(publicKey: string): Promise<void> {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Has bloqueado las notificaciones. Actívalas en los ajustes del navegador o de la app.');
-  const registration = await navigator.serviceWorker.ready;
-  const subscription =
-    (await registration.pushManager.getSubscription()) ??
-    (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) }));
+  const worker = await registration();
+  if (!worker) throw new Error('La app aún no está lista para notificaciones. Recarga la página e inténtalo de nuevo.');
+  const key = base64UrlToBytes(publicKey);
+  let subscription = await worker.pushManager.getSubscription();
+  // A subscription made with an older server key no longer receives anything: replace it.
+  if (subscription && !sameKey(subscription.options.applicationServerKey, key)) {
+    await subscription.unsubscribe();
+    subscription = null;
+  }
+  subscription ??= await worker.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
   await api<void>('POST', '/api/push/subscriptions', subscription.toJSON());
 }
 
@@ -36,4 +46,10 @@ export function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(new ArrayBuffer(binary.length));
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
+}
+
+function sameKey(current: ArrayBuffer | null, expected: Uint8Array): boolean {
+  if (!current) return false;
+  const bytes = new Uint8Array(current);
+  return bytes.length === expected.length && bytes.every((byte, i) => byte === expected[i]);
 }
