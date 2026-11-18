@@ -50,6 +50,11 @@ export interface FoodAssistant {
   suggestDishes(stock: StockLine[], wish: string, recipes: Recipe[]): Promise<DishSuggestion[]>;
 }
 
+/** Suggestions that must be cookable with the stock, buying at most MAX_MISSING other things. */
+const MIN_COOKABLE = 3;
+const MAX_MISSING = 2;
+const cookableCount = (dishes: DishSuggestion[]) => dishes.filter((dish) => dish.missing.length <= MAX_MISSING).length;
+
 export const aiDisabled = () => new AppError(503, 'ai_disabled', 'La IA no está configurada en el servidor (falta GEMINI_API_KEY)');
 
 export class AssistantService {
@@ -88,7 +93,13 @@ export class AssistantService {
       .map(({ name, available, unit, location }) => ({ name, available, unit, location }));
     if (!stock.length) throw new AppError(400, 'no_stock', 'Añade alimentos para recibir ideas de platos');
     const recipes = await this.inspiration(assistant, stock);
-    const dishes = await this.call(() => assistant.suggestDishes(stock, wish.trim(), recipes));
+    const ask = () => this.call(() => assistant.suggestDishes(stock, wish.trim(), recipes));
+    let dishes = await ask();
+    // The household always gets a few dishes it can cook with what it has; one more try if the AI fell short.
+    if (cookableCount(dishes) < MIN_COOKABLE) {
+      const retry = await ask();
+      if (cookableCount(retry) > cookableCount(dishes)) dishes = retry;
+    }
     // Dishes that can be cooked with what is at home come first.
     return [...dishes].sort((a, b) => a.missing.length - b.missing.length);
   }

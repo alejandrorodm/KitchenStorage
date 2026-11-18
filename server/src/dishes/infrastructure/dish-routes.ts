@@ -8,7 +8,8 @@ const dishFields = {
   title: line(120),
   description: z.string().trim().max(400),
   minutes: z.number().int().min(1).max(1440).nullable(),
-  ingredients: z.array(line(120)).max(50),
+  // An AI idea brings up to 30 foods at home and 30 to buy.
+  ingredients: z.array(line(120)).max(60),
   steps: z.array(line(600)).max(30),
   sourceUrl: z.string().url().max(500).refine((url) => /^https?:\/\//.test(url), 'Enlace no válido').nullable(),
 };

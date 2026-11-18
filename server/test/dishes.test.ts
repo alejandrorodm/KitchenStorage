@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createTestApp, signedIn } from './helpers.js';
 import { MIGRATIONS, migrate } from '../src/shared/db.js';
+import { DishService, type DishRepository } from '../src/dishes/application/dish-service.js';
 
 let app: FastifyInstance;
 afterEach(() => app?.close());
@@ -55,6 +56,28 @@ describe('my dishes', () => {
     const repeated = await ana({ method: 'POST', url: '/api/dishes', payload: { title: 'tortilla de PATATAS' } });
     expect(repeated.statusCode).toBe(409);
     expect(repeated.json()).toEqual({ error: 'conflict', message: 'Ya tienes un plato llamado «tortilla de PATATAS»' });
+  });
+
+  it('accepts an AI idea with many ingredients (30 at home + 30 to buy)', async () => {
+    app = await createTestApp();
+    const ana = await signedIn(app);
+    const ingredients = Array.from({ length: 60 }, (_, n) => `Ingrediente ${n}`);
+    expect((await ana({ method: 'POST', url: '/api/dishes', payload: { title: 'Cocido', ingredients } })).statusCode).toBe(201);
+  });
+
+  it('answers a repeated title with 409 even when two saves race past the check', () => {
+    const racing: DishRepository = {
+      list: () => [],
+      get: () => undefined,
+      findByKey: () => undefined,
+      insert: () => {
+        throw Object.assign(new Error('UNIQUE constraint failed: dishes.household_id, dishes.title_key'), { code: 'ERR_SQLITE_ERROR' });
+      },
+      update: () => {},
+      delete: () => false,
+    };
+    const service = new DishService(racing, () => {});
+    expect(() => service.create({ ...TORTILLA })).toThrow(expect.objectContaining({ statusCode: 409, message: 'Ya tienes un plato llamado «Tortilla de patatas»' }));
   });
 
   it('lists dishes alphabetically', async () => {

@@ -197,7 +197,7 @@ describe('dish suggestions', () => {
     const res = await ana({ method: 'POST', url: '/api/dishes/suggest', payload: { wish: '  algo rápido ' } });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ dishes: [DISH] });
-    expect(calls.dishes).toEqual([{ stock: [{ name: 'Huevos', available: 6, unit: 'unit', location: 'fridge' }], wish: 'algo rápido', recipes: [] }]);
+    expect(calls.dishes[0]).toEqual({ stock: [{ name: 'Huevos', available: 6, unit: 'unit', location: 'fridge' }], wish: 'algo rápido', recipes: [] });
   });
 
   it('gives the AI recipes from the recipe database that use the stock, in English', async () => {
@@ -222,6 +222,31 @@ describe('dish suggestions', () => {
     const res = await ana({ method: 'POST', url: '/api/dishes/suggest', payload: {} });
     expect(res.json()).toEqual({ dishes: [DISH] });
     expect(calls.dishes[0]!.recipes).toEqual([]);
+  });
+
+  it('asks again when fewer than 3 ideas can be made with what is at home, and keeps the better answer', async () => {
+    const dish = (title: string, missing: string[]) => ({ ...DISH, title, missing });
+    const fresh = [dish('A', ['x', 'y', 'z']), dish('B', ['x', 'y', 'z']), dish('C', []), dish('D', ['x', 'y', 'z'])];
+    const matching = [dish('E', []), dish('F', ['x']), dish('G', ['x', 'y']), dish('H', ['x', 'y', 'z'])];
+    const answers = [fresh, matching];
+    const calls = { categorize: [], dishes: [] as DishCall[] };
+    const assistant = fakeAssistant(calls);
+    app = await createTestApp(undefined, { foodAssistant: { ...assistant, suggestDishes: async (...args) => (await assistant.suggestDishes(...args), answers.shift()!) } });
+    const ana = await signedIn(app);
+    await addItem(ana, 'Huevos');
+    const titles = (await ana({ method: 'POST', url: '/api/dishes/suggest', payload: {} })).json().dishes.map((d: DishSuggestion) => d.title);
+    expect(calls.dishes).toHaveLength(2);
+    expect(titles).toEqual(['E', 'F', 'G', 'H']);
+  });
+
+  it('does not ask again when at least 3 ideas can be made with what is at home', async () => {
+    const dish = (title: string, missing: string[]) => ({ ...DISH, title, missing });
+    const calls = { categorize: [], dishes: [] as DishCall[] };
+    app = await createTestApp(undefined, { foodAssistant: fakeAssistant(calls, [dish('A', []), dish('B', ['x', 'y']), dish('C', ['x']), dish('D', ['a', 'b', 'c'])]) });
+    const ana = await signedIn(app);
+    await addItem(ana, 'Huevos');
+    await ana({ method: 'POST', url: '/api/dishes/suggest', payload: {} });
+    expect(calls.dishes).toHaveLength(1);
   });
 
   it('shows first the dishes that need the fewest things to buy', async () => {

@@ -13,6 +13,7 @@ export interface DishRepository {
 }
 
 const missing = () => notFound('No se encontró el plato');
+const taken = (title: string) => conflict(`Ya tienes un plato llamado «${title}»`);
 
 export class DishService {
   constructor(
@@ -28,7 +29,7 @@ export class DishService {
   create(input: DishInput): Dish {
     const dish: Dish = { ...input, title: input.title.trim(), id: randomUUID(), createdAt: this.now().toISOString() };
     this.ensureFree(dish.title);
-    this.dishes.insert(dish);
+    this.guardDuplicate(dish.title, () => this.dishes.insert(dish));
     this.afterChange();
     return dish;
   }
@@ -38,7 +39,7 @@ export class DishService {
     if (!current) throw missing();
     const dish: Dish = { ...current, ...changes, title: (changes.title ?? current.title).trim() };
     this.ensureFree(dish.title, id);
-    this.dishes.update(dish);
+    this.guardDuplicate(dish.title, () => this.dishes.update(dish));
     this.afterChange();
     return dish;
   }
@@ -50,6 +51,16 @@ export class DishService {
 
   private ensureFree(title: string, exceptId?: string): void {
     const existing = this.dishes.findByKey(normalizeName(title));
-    if (existing && existing.id !== exceptId) throw conflict(`Ya tienes un plato llamado «${title}»`);
+    if (existing && existing.id !== exceptId) throw taken(title);
+  }
+
+  /** Two saves of the same title at once both pass ensureFree; the database's unique rule catches the second. */
+  private guardDuplicate(title: string, write: () => void): void {
+    try {
+      write();
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) throw taken(title);
+      throw error;
+    }
   }
 }
