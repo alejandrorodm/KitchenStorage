@@ -27,7 +27,7 @@ const NAV: NavItem[] = [
   { id: 'today', label: 'Hoy', icon: Sun, inTabBar: true },
   { id: 'inventory', label: 'Alimentos', icon: Refrigerator, inTabBar: true },
   { id: 'planner', label: 'Menú', icon: CalendarDays, inTabBar: true },
-  { id: 'dishes', label: 'Ideas', icon: ChefHat, inTabBar: true },
+  { id: 'dishes', label: 'Platos', icon: ChefHat, inTabBar: true },
   { id: 'shopping', label: 'Compra', icon: ShoppingCart, inTabBar: true },
   { id: 'receipt', label: 'Escanear ticket', icon: ScanLine, inTabBar: false },
   { id: 'household', label: 'Mi casa', icon: House, inTabBar: false },

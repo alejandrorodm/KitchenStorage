@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 
 interface FieldProps {
   label: string;
@@ -19,6 +19,10 @@ export function Field({ label, hint, children, className = '' }: FieldProps) {
 
 export function TextInput({ className = '', ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={`input ${className}`} {...props} />;
+}
+
+export function TextArea({ className = '', ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea className={`input textarea ${className}`} rows={4} {...props} />;
 }
 
 export function NumberInput({ className = '', ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {

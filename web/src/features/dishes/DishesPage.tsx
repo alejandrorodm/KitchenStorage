@@ -1,16 +1,52 @@
-import { Check, ChefHat, Clock, Info, LoaderCircle, ShoppingCart, Sparkles } from 'lucide-react';
+import { BookOpen, Check, ChefHat, Clock, Info, LoaderCircle, Plus, ShoppingCart, Sparkles } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { useAddShopping, useAiStatus, useShopping, useSuggestDishes } from '../../api/hooks';
+import { useAddShopping, useAiStatus, useDishAction, useDishes, useShopping, useSuggestDishes } from '../../api/hooks';
 import type { DishSuggestion } from '../../api/types';
-import { Button } from '../../components/atoms/Button';
+import { Button, IconButton } from '../../components/atoms/Button';
 import { EmptyState } from '../../components/atoms/EmptyState';
+import { Segmented } from '../../components/atoms/Segmented';
 import { Field, TextInput } from '../../components/atoms/Field';
 import { useToast } from '../../components/atoms/Toast';
 import { PageHeader } from '../../components/molecules/PageHeader';
-import { normalizeForMatch } from '../../shared/dishes';
+import { normalizeForMatch, suggestionToDish } from '../../shared/dishes';
+import { MyDishes, SourceLink } from './MyDishes';
 
-/** Dish ideas from the AI, built around what is in stock. */
+type Tab = 'ideas' | 'mine';
+const TABS: readonly Tab[] = ['ideas', 'mine'];
+const TAB_LABEL: Record<Tab, string> = { ideas: 'Ideas con IA', mine: 'Mis platos' };
+const TAB_ICON = { ideas: Sparkles, mine: BookOpen };
+const TAB_KEY = 'dishes-tab';
+
+function storedTab(): Tab {
+  try {
+    return localStorage.getItem(TAB_KEY) === 'mine' ? 'mine' : 'ideas';
+  } catch {
+    return 'ideas';
+  }
+}
+
+/** Dishes: the household's own, and ideas from the AI built around what is in stock. */
 export function DishesPage() {
+  const [tab, setTabState] = useState<Tab>(storedTab);
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    try {
+      localStorage.setItem(TAB_KEY, next);
+    } catch {
+      // Only a convenience: the page opens on the ideas next time.
+    }
+  };
+
+  return (
+    <section className="page page-narrow">
+      <PageHeader title="Platos" />
+      <Segmented label="Platos" value={tab} options={TABS} labels={TAB_LABEL} icons={TAB_ICON} onChange={setTab} />
+      {tab === 'ideas' ? <DishIdeas /> : <MyDishes />}
+    </section>
+  );
+}
+
+function DishIdeas() {
   const status = useAiStatus();
   const suggest = useSuggestDishes();
   const [wish, setWish] = useState('');
@@ -22,21 +58,17 @@ export function DishesPage() {
 
   if (status.data && !status.data.enabled) {
     return (
-      <section className="page page-narrow">
-        <PageHeader title="Ideas de platos" />
-        <EmptyState icon={Info} title="La IA no está activada">
-          <p>Falta configurar GEMINI_API_KEY en el servidor para recibir ideas de platos.</p>
-        </EmptyState>
-      </section>
+      <EmptyState icon={Info} title="La IA no está activada">
+        <p>Falta configurar GEMINI_API_KEY en el servidor para recibir ideas de platos.</p>
+      </EmptyState>
     );
   }
 
   const dishes = suggest.data?.dishes;
 
   return (
-    <section className="page page-narrow">
-      <PageHeader title="Ideas de platos" />
-      <p className="lead">La IA te propone platos con lo que tienes en casa y te dice qué faltaría comprar.</p>
+    <>
+      <p className="lead">La IA te propone platos con lo que tienes en casa, algunos inspirados en recetas de TheMealDB, y te dice qué faltaría comprar. Guarda con + los que te gusten.</p>
 
       <form className="form dish-form" onSubmit={submit}>
         <Field label="¿Qué te apetece? (opcional)">
@@ -63,19 +95,23 @@ export function DishesPage() {
       {!suggest.isPending && dishes && dishes.length === 0 && <EmptyState icon={ChefHat} title="No salió ninguna idea. Prueba otra vez." />}
       {!suggest.isPending && dishes && dishes.length > 0 && (
         <ul className="dish-list">
-          {dishes.map((dish) => (
-            <DishCard key={dish.title} dish={dish} />
+          {dishes.map((dish, index) => (
+            <DishCard key={`${index}:${dish.title}`} dish={dish} />
           ))}
         </ul>
       )}
-    </section>
+    </>
   );
 }
 
 function DishCard({ dish }: { dish: DishSuggestion }) {
   const shopping = useShopping().data ?? [];
   const add = useAddShopping();
+  const saved = useDishes().data ?? [];
+  const save = useDishAction();
   const toast = useToast();
+  const isSaved = saved.some((d) => normalizeForMatch(d.title) === normalizeForMatch(dish.title));
+  const keep = () => save.mutate({ type: 'create', input: suggestionToDish(dish) }, { onSuccess: () => toast(`${dish.title} guardado en Mis platos`) });
   const onList = new Set(shopping.filter((e) => !e.checked).map((e) => normalizeForMatch(e.name)));
   const toBuy = dish.missing.filter((name) => !onList.has(normalizeForMatch(name)));
 
@@ -88,8 +124,18 @@ function DishCard({ dish }: { dish: DishSuggestion }) {
     <li className="panel dish">
       <div className="panel-head">
         <h2>{dish.title}</h2>
-        <span className="dish-time">
-          <Clock aria-hidden size={16} /> {dish.minutes} min
+        <span className="dish-head-actions">
+          <span className="dish-time">
+            <Clock aria-hidden size={16} /> {dish.minutes} min
+          </span>
+          {isSaved ? (
+            <span className="dish-saved" title="Guardado en Mis platos">
+              <Check aria-hidden size={18} />
+              <span className="sr-only">Guardado en Mis platos</span>
+            </span>
+          ) : (
+            <IconButton icon={Plus} className="dish-keep" label={`Guardar ${dish.title} en Mis platos`} onClick={keep} disabled={save.isPending} />
+          )}
         </span>
       </div>
       {dish.description && <p className="muted">{dish.description}</p>}
@@ -120,9 +166,10 @@ function DishCard({ dish }: { dish: DishSuggestion }) {
           </Button>
         </div>
       )}
-      {add.error && (
+      {dish.sourceUrl && <SourceLink url={dish.sourceUrl} />}
+      {(add.error ?? save.error) && (
         <p className="error" role="alert">
-          {add.error.message}
+          {(add.error ?? save.error)!.message}
         </p>
       )}
     </li>

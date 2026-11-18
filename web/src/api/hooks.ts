@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { disablePush } from '../shared/push';
 import { api } from './client';
-import type { Category, DishSuggestion, FoodItem, FoodItemInput, Household, HouseholdSummary, Invite, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
+import type { Category, Dish, DishInput, DishSuggestion, FoodItem, FoodItemInput, Household, HouseholdSummary, Invite, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -11,6 +11,7 @@ export const keys = {
   shopping: ['shopping'] as const,
   receiptStatus: ['receipts', 'status'] as const,
   aiStatus: ['ai', 'status'] as const,
+  dishes: ['dishes'] as const,
   household: ['household'] as const,
   push: ['push'] as const,
   invites: ['admin', 'invites'] as const,
@@ -196,6 +197,24 @@ export function useCategorize() {
   return useMutation({
     mutationFn: () => api<{ categorized: number; remaining: number }>('POST', '/api/items/categorize'),
     onSuccess: () => invalidate([['inventory']]),
+  });
+}
+
+export function useDishes() {
+  return useQuery({ queryKey: keys.dishes, queryFn: () => api<Dish[]>('GET', '/api/dishes') });
+}
+
+export type DishAction = { type: 'create'; input: DishInput } | { type: 'update'; id: string; input: DishInput } | { type: 'delete'; id: string };
+
+export function useDishAction() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (action: DishAction) => {
+      if (action.type === 'create') return api<Dish | void>('POST', '/api/dishes', action.input);
+      if (action.type === 'update') return api<Dish | void>('PATCH', `/api/dishes/${action.id}`, action.input);
+      return api<Dish | void>('DELETE', `/api/dishes/${action.id}`);
+    },
+    onSuccess: () => invalidate([keys.dishes]),
   });
 }
 
