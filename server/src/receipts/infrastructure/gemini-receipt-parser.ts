@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
+import { geminiRetryPlan, withAiRetry, type GeminiOptions, type RetryPlan } from '../../shared/gemini-retry.js';
 import { LOCATIONS, UNITS } from '../../inventory/domain/stock.js';
 import type { ParsedReceiptLine, ReceiptParser } from '../application/receipt-service.js';
 
@@ -47,26 +48,27 @@ const responseShape = z.object({
 
 export class GeminiReceiptParser implements ReceiptParser {
   private readonly client: GoogleGenAI;
+  private readonly retry: RetryPlan;
 
-  constructor(
-    apiKey: string,
-    private readonly model: string,
-  ) {
+  constructor(apiKey: string, model: string, options: GeminiOptions = {}) {
     // Structured JSON output (responseJsonSchema) is only served by v1beta; the SDK defaults to v1.
     this.client = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
+    this.retry = { ...geminiRetryPlan(model, options.fallbackModel), sleep: options.sleep };
   }
 
   async parse(image: Buffer, mimeType: string, categories: string[]): Promise<ParsedReceiptLine[]> {
-    const response = await this.client.models.generateContent({
-      model: this.model,
-      contents: [
-        {
-          role: 'user',
-          parts: [{ inlineData: { mimeType, data: image.toString('base64') } }, { text: `${PROMPT}\nCategories: ${JSON.stringify(categories)}` }],
-        },
-      ],
-      config: { responseMimeType: 'application/json', responseJsonSchema: RESPONSE_SCHEMA, temperature: 0 },
-    });
+    const response = await withAiRetry(this.retry, (model) =>
+      this.client.models.generateContent({
+        model,
+        contents: [
+          {
+            role: 'user',
+            parts: [{ inlineData: { mimeType, data: image.toString('base64') } }, { text: `${PROMPT}\nCategories: ${JSON.stringify(categories)}` }],
+          },
+        ],
+        config: { responseMimeType: 'application/json', responseJsonSchema: RESPONSE_SCHEMA, temperature: 0 },
+      }),
+    );
     return parseGeminiResponse(response.text);
   }
 }

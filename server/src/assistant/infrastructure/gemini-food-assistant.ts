@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
+import { geminiRetryPlan, withAiRetry, type GeminiOptions, type RetryPlan } from '../../shared/gemini-retry.js';
 import type { DishSuggestion, FoodAssistant, StockLine } from '../application/assistant-service.js';
 
 const CATEGORIZE_SCHEMA = {
@@ -53,13 +54,12 @@ const dishShape = z.object({
 
 export class GeminiFoodAssistant implements FoodAssistant {
   private readonly client: GoogleGenAI;
+  private readonly retry: RetryPlan;
 
-  constructor(
-    apiKey: string,
-    private readonly model: string,
-  ) {
+  constructor(apiKey: string, model: string, options: GeminiOptions = {}) {
     // Structured JSON output (responseJsonSchema) is only served by v1beta; the SDK defaults to v1.
     this.client = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
+    this.retry = { ...geminiRetryPlan(model, options.fallbackModel), sleep: options.sleep };
   }
 
   async categorize(names: string[], categories: string[]): Promise<(string | null)[]> {
@@ -85,11 +85,13 @@ Available food: ${JSON.stringify(stock)}`;
   }
 
   private async generate(prompt: string, schema: object, temperature: number): Promise<string | undefined> {
-    const response = await this.client.models.generateContent({
-      model: this.model,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { responseMimeType: 'application/json', responseJsonSchema: schema, temperature },
-    });
+    const response = await withAiRetry(this.retry, (model) =>
+      this.client.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: 'application/json', responseJsonSchema: schema, temperature },
+      }),
+    );
     return response.text;
   }
 }

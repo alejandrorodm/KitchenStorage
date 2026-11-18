@@ -225,6 +225,57 @@ describe('GeminiFoodAssistant', () => {
     expect(bodies[0]).toContain('Verduras');
   });
 
+  function stubOverloaded(failures: number, urls: string[]) {
+    vi.stubGlobal('fetch', async (input: string | URL | Request) => {
+      urls.push(input instanceof Request ? input.url : String(input));
+      if (urls.length <= failures) {
+        const error = { error: { code: 503, message: 'This model is currently experiencing high demand.', status: 'UNAVAILABLE' } };
+        return new Response(JSON.stringify(error), { status: 503, headers: { 'content-type': 'application/json' } });
+      }
+      const text = JSON.stringify({ items: [{ index: 0, category: 'Frutas' }] });
+      return new Response(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text }] } }] }), { headers: { 'content-type': 'application/json' } });
+    });
+  }
+
+  const noWait = { sleep: async () => {} };
+
+  it('retries the same model when Gemini is overloaded', async () => {
+    const urls: string[] = [];
+    stubOverloaded(2, urls);
+    const answers = await new GeminiFoodAssistant('k', 'gemini-2.5-flash', { fallbackModel: 'gemini-2.5-flash-lite', ...noWait }).categorize(['Manzana'], ['Frutas']);
+    expect(answers).toEqual(['Frutas']);
+    expect(urls).toHaveLength(3);
+    expect(urls.every((url) => url.includes('/models/gemini-2.5-flash:'))).toBe(true);
+  });
+
+  it('moves to the fallback model when the main one stays overloaded', async () => {
+    const urls: string[] = [];
+    stubOverloaded(3, urls);
+    const answers = await new GeminiFoodAssistant('k', 'gemini-2.5-flash', { fallbackModel: 'gemini-2.5-flash-lite', ...noWait }).categorize(['Manzana'], ['Frutas']);
+    expect(answers).toEqual(['Frutas']);
+    expect(urls).toHaveLength(4);
+    expect(urls[3]).toContain('/models/gemini-2.5-flash-lite:');
+  });
+
+  it('gives up with the overload error when every model stays overloaded', async () => {
+    const urls: string[] = [];
+    stubOverloaded(100, urls);
+    const assistant = new GeminiFoodAssistant('k', 'gemini-2.5-flash', { fallbackModel: 'gemini-2.5-flash-lite', ...noWait });
+    await expect(assistant.categorize(['Manzana'], ['Frutas'])).rejects.toMatchObject({ status: 503 });
+    expect(urls).toHaveLength(6);
+  });
+
+  it('does not retry an error that is not an overload', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', async (input: string | URL | Request) => {
+      urls.push(String(input instanceof Request ? input.url : input));
+      return new Response(JSON.stringify({ error: { code: 400, message: 'bad', status: 'INVALID_ARGUMENT' } }), { status: 400, headers: { 'content-type': 'application/json' } });
+    });
+    const assistant = new GeminiFoodAssistant('k', 'gemini-2.5-flash', { fallbackModel: 'gemini-2.5-flash-lite', ...noWait });
+    await expect(assistant.categorize(['Manzana'], ['Frutas'])).rejects.toMatchObject({ status: 400 });
+    expect(urls).toHaveLength(1);
+  });
+
   it('suggests dishes from the stock and passes the wish along', async () => {
     const bodies: string[] = [];
     stubGemini({ dishes: [DISH] }, bodies, []);

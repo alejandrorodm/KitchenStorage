@@ -6,8 +6,10 @@ import { GeminiReceiptParser } from './receipts/infrastructure/gemini-receipt-pa
 const env = process.env;
 
 const geminiModel = env.GEMINI_MODEL ?? 'gemini-flash-latest';
-const receiptParser = env.GEMINI_API_KEY ? new GeminiReceiptParser(env.GEMINI_API_KEY, geminiModel) : null;
-const foodAssistant = env.GEMINI_API_KEY ? new GeminiFoodAssistant(env.GEMINI_API_KEY, geminiModel) : null;
+// An empty GEMINI_FALLBACK_MODEL turns the fallback off.
+const geminiOptions = { fallbackModel: env.GEMINI_FALLBACK_MODEL ?? 'gemini-2.5-flash-lite' };
+const receiptParser = env.GEMINI_API_KEY ? new GeminiReceiptParser(env.GEMINI_API_KEY, geminiModel, geminiOptions) : null;
+const foodAssistant = env.GEMINI_API_KEY ? new GeminiFoodAssistant(env.GEMINI_API_KEY, geminiModel, geminiOptions) : null;
 
 const pushSender =
   env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY
