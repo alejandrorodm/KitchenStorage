@@ -25,41 +25,45 @@ const ALLOCATIONS_SQL = `
   FROM meal_allocations a JOIN food_items f ON f.id = a.food_item_id`;
 
 export class SqliteMealPlanRepository implements MealPlanRepository {
-  constructor(private readonly db: Db) {}
+  constructor(
+    private readonly db: Db,
+    private readonly householdId: string,
+  ) {}
 
   listBetween(from: string, to: string): Meal[] {
     const meals = this.db
-      .prepare('SELECT * FROM meals WHERE date BETWEEN ? AND ? ORDER BY date, meal_type')
-      .all(from, to) as unknown as MealRow[];
+      .prepare('SELECT * FROM meals WHERE household_id = ? AND date BETWEEN ? AND ? ORDER BY date, meal_type')
+      .all(this.householdId, from, to) as unknown as MealRow[];
     if (!meals.length) return [];
     const allocations = this.db
-      .prepare(`${ALLOCATIONS_SQL} JOIN meals m ON m.id = a.meal_id WHERE m.date BETWEEN ? AND ? ORDER BY f.name`)
-      .all(from, to) as unknown as AllocationRow[];
+      .prepare(`${ALLOCATIONS_SQL} JOIN meals m ON m.id = a.meal_id WHERE m.household_id = ? AND m.date BETWEEN ? AND ? ORDER BY f.name`)
+      .all(this.householdId, from, to) as unknown as AllocationRow[];
     return meals.map((meal) => toMeal(meal, allocations.filter((a) => a.meal_id === meal.id)));
   }
 
   get(id: string): Meal | undefined {
-    const meal = this.db.prepare('SELECT * FROM meals WHERE id = ?').get(id) as MealRow | undefined;
+    const meal = this.db.prepare('SELECT * FROM meals WHERE id = ? AND household_id = ?').get(id, this.householdId) as MealRow | undefined;
     return meal && this.withAllocations(meal);
   }
 
   findSlot(date: string, mealType: MealType): Meal | undefined {
-    const meal = this.db.prepare('SELECT * FROM meals WHERE date = ? AND meal_type = ?').get(date, mealType) as MealRow | undefined;
+    const meal = this.db.prepare('SELECT * FROM meals WHERE household_id = ? AND date = ? AND meal_type = ?').get(this.householdId, date, mealType) as MealRow | undefined;
     return meal && this.withAllocations(meal);
   }
 
   missingFoodItems(ids: string[]): string[] {
-    const exists = this.db.prepare('SELECT 1 FROM food_items WHERE id = ?');
-    return ids.filter((id) => !exists.get(id));
+    const exists = this.db.prepare('SELECT 1 FROM food_items WHERE id = ? AND household_id = ?');
+    return ids.filter((id) => !exists.get(id, this.householdId));
   }
 
   upsert(meal: Omit<Meal, 'allocations'>, allocations: { id: string; foodItemId: string; quantity: number }[]): void {
     this.db
       .prepare(
-        `INSERT INTO meals (id, date, meal_type, title, consumed) VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT (id) DO UPDATE SET title = excluded.title, consumed = excluded.consumed`,
+        `INSERT INTO meals (id, household_id, date, meal_type, title, consumed) VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET title = excluded.title, consumed = excluded.consumed
+         WHERE meals.household_id = excluded.household_id`,
       )
-      .run(meal.id, meal.date, meal.mealType, meal.title, meal.consumed ? 1 : 0);
+      .run(meal.id, this.householdId, meal.date, meal.mealType, meal.title, meal.consumed ? 1 : 0);
     this.db.prepare('DELETE FROM meal_allocations WHERE meal_id = ?').run(meal.id);
     const insert = this.db.prepare('INSERT INTO meal_allocations (id, meal_id, food_item_id, quantity) VALUES (?, ?, ?, ?)');
     for (const a of allocations) insert.run(a.id, meal.id, a.foodItemId, a.quantity);
@@ -93,11 +97,11 @@ export class SqliteMealPlanRepository implements MealPlanRepository {
         .run(now, mealId, mealId);
       this.db.prepare('UPDATE meal_allocations SET consumed_quantity = 0 WHERE meal_id = ?').run(mealId);
     }
-    this.db.prepare('UPDATE meals SET consumed = ? WHERE id = ?').run(consume ? 1 : 0, mealId);
+    this.db.prepare('UPDATE meals SET consumed = ? WHERE id = ? AND household_id = ?').run(consume ? 1 : 0, mealId, this.householdId);
   }
 
   delete(id: string): boolean {
-    return Number(this.db.prepare('DELETE FROM meals WHERE id = ?').run(id).changes) > 0;
+    return Number(this.db.prepare('DELETE FROM meals WHERE id = ? AND household_id = ?').run(id, this.householdId).changes) > 0;
   }
 
   runAtomically<T>(work: () => T): T {

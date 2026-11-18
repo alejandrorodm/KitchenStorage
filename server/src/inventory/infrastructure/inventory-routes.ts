@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { InventoryService } from '../application/inventory-service.js';
 import { LOCATIONS, UNITS } from '../domain/stock.js';
@@ -13,29 +13,30 @@ export const foodItemInput = z.object({
 
 const idParam = z.object({ id: z.string().min(1) });
 
-export function registerInventoryRoutes(app: FastifyInstance, inventory: InventoryService) {
-  app.get('/api/items', async () => inventory.list());
+/** Routes get the service of the signed-in user's household for each request. */
+export function registerInventoryRoutes(app: FastifyInstance, inventoryFor: (request: FastifyRequest) => InventoryService) {
+  app.get('/api/items', async (request) => inventoryFor(request).list());
 
-  app.get('/api/alerts', async () => inventory.list().filter((item) => item.status !== 'ok'));
+  app.get('/api/alerts', async (request) => inventoryFor(request).list().filter((item) => item.status !== 'ok'));
 
   app.post('/api/items', async (request, reply) => {
-    const item = inventory.create(foodItemInput.parse(request.body));
+    const item = inventoryFor(request).create(foodItemInput.parse(request.body));
     return reply.code(201).send(item);
   });
 
   app.patch('/api/items/:id', async (request) => {
     const { id } = idParam.parse(request.params);
-    return inventory.update(id, foodItemInput.partial().parse(request.body));
+    return inventoryFor(request).update(id, foodItemInput.partial().parse(request.body));
   });
 
   app.post('/api/items/:id/adjust', async (request) => {
     const { id } = idParam.parse(request.params);
     const { delta } = z.object({ delta: z.number().finite() }).parse(request.body);
-    return inventory.adjust(id, delta);
+    return inventoryFor(request).adjust(id, delta);
   });
 
   app.delete('/api/items/:id', async (request, reply) => {
-    inventory.delete(idParam.parse(request.params).id);
+    inventoryFor(request).delete(idParam.parse(request.params).id);
     return reply.code(204).send();
   });
 }

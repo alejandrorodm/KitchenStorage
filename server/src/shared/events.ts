@@ -2,20 +2,27 @@ export type Topic = 'inventory' | 'meals' | 'shopping';
 
 type Listener = (topics: Topic[]) => void;
 
-/** In-process pub/sub used to push "data changed" notifications to every connected device. */
+/** In-process pub/sub that pushes "data changed" notifications to the devices of one household. */
 export class ChangeEvents {
-  private readonly listeners = new Set<Listener>();
+  private readonly listeners = new Map<string, Set<Listener>>();
 
-  subscribe(listener: Listener): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+  subscribe(householdId: string, listener: Listener): () => void {
+    const set = this.listeners.get(householdId) ?? new Set();
+    set.add(listener);
+    this.listeners.set(householdId, set);
+    return () => {
+      set.delete(listener);
+      if (!set.size) this.listeners.delete(householdId);
+    };
   }
 
-  publish(...topics: Topic[]): void {
-    for (const listener of this.listeners) listener(topics);
+  publish(householdId: string, ...topics: Topic[]): void {
+    for (const listener of this.listeners.get(householdId) ?? []) listener(topics);
   }
 
   get size(): number {
-    return this.listeners.size;
+    let total = 0;
+    for (const set of this.listeners.values()) total += set.size;
+    return total;
   }
 }

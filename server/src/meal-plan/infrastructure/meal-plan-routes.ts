@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { MEAL_TYPES, type MealPlanService } from '../application/meal-plan-service.js';
 
@@ -12,23 +12,23 @@ const mealInput = z.object({
     .default([]),
 });
 
-export function registerMealPlanRoutes(app: FastifyInstance, meals: MealPlanService) {
+export function registerMealPlanRoutes(app: FastifyInstance, mealsFor: (request: FastifyRequest) => MealPlanService) {
   app.get('/api/meals', async (request) => {
     const { from, to } = z.object({ from: isoDate, to: isoDate }).parse(request.query);
-    return meals.week(from, to);
+    return mealsFor(request).week(from, to);
   });
 
   app.put('/api/meals/:date/:mealType', async (request) => {
     const { date, mealType } = z.object({ date: isoDate, mealType: z.enum(MEAL_TYPES) }).parse(request.params);
-    return meals.save(date, mealType, mealInput.parse(request.body ?? {}));
+    return mealsFor(request).save(date, mealType, mealInput.parse(request.body ?? {}));
   });
 
-  app.post('/api/meals/:id/consume', async (request) => meals.consume(mealId(request.params)));
+  app.post('/api/meals/:id/consume', async (request) => mealsFor(request).consume(mealId(request.params)));
 
-  app.post('/api/meals/:id/unconsume', async (request) => meals.unconsume(mealId(request.params)));
+  app.post('/api/meals/:id/unconsume', async (request) => mealsFor(request).unconsume(mealId(request.params)));
 
   app.delete('/api/meals/:id', async (request, reply) => {
-    meals.delete(mealId(request.params));
+    mealsFor(request).delete(mealId(request.params));
     return reply.code(204).send();
   });
 }

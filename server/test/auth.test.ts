@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { createTestApp, INVITE_CODE, sessionCookie, signedIn } from './helpers.js';
+import { createTestApp, newHouseholdCode, sessionCookie, signedIn } from './helpers.js';
 
 let app: FastifyInstance;
 afterEach(() => app?.close());
@@ -27,7 +27,7 @@ describe('auth', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { username: 'ana garcía', password: 'correct horse battery', inviteCode: INVITE_CODE },
+      payload: { username: 'ana garcía', password: 'correct horse battery', inviteCode: newHouseholdCode(app) },
     });
     expect(res.statusCode).toBe(400);
     expect(res.json()).toMatchObject({ error: 'validation_error', message: 'Usuario: solo letras, números, punto, guion o guion bajo, sin espacios' });
@@ -35,7 +35,7 @@ describe('auth', () => {
     const short = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { username: 'ana', password: 'corto', inviteCode: INVITE_CODE },
+      payload: { username: 'ana', password: 'corto', inviteCode: newHouseholdCode(app) },
     });
     expect(short.json().message).toBe('Contraseña: debe tener al menos 8 caracteres');
   });
@@ -80,7 +80,7 @@ describe('auth', () => {
     const duplicate = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { username: 'Ana', password: 'another long one', inviteCode: INVITE_CODE },
+      payload: { username: 'Ana', password: 'another long one', inviteCode: newHouseholdCode(app) },
     });
     expect(duplicate.statusCode).toBe(409);
   });

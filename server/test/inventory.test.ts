@@ -58,7 +58,8 @@ describe('inventory', () => {
     app = await createTestApp();
     const request = await signedIn(app);
     const received: string[][] = [];
-    app.changeEvents.subscribe((topics) => received.push(topics));
+    const { householdId } = (await request({ method: 'GET', url: '/api/auth/me' })).json();
+    app.changeEvents.subscribe(householdId, (topics) => received.push(topics));
     await request({ method: 'POST', url: '/api/items', payload: { name: 'Arroz', location: 'pantry', quantity: 1, unit: 'kg' } });
     expect(received.flat()).toContain('inventory');
   });

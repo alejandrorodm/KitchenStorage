@@ -13,7 +13,9 @@ Household app to track what is in the **fridge, freezer and pantry**, plan **bre
 | Count | Planned food is subtracted from the **available** count right away. **Mark as eaten** takes it out of stock; **Undo** puts back exactly what was taken. |
 | Alerts | An item is *running low* when available ≤ threshold and *out of stock* when available ≤ 0. Shown on the Today screen and as a badge on the Food (Alimentos) section. |
 | Shopping list | Low/out items are added automatically and removed once restocked. Manual entries can be added, checked and cleared. |
-| Sync | One shared household dataset. Changes are pushed to all devices via Server-Sent Events. |
+| Households | Each household has its own food, menu and shopping list. Registration needs a code: a household's own code (shown in **Mi casa**) joins that household; a single-use code from an admin creates a new household. |
+| Admin | Admins get an **Admin** section to generate and revoke single-use codes and see every household. |
+| Sync | Changes are pushed to every device of the same household via Server-Sent Events. |
 | Layout | Phones: bottom tab bar, day picker in the planner and bottom-sheet dialogs. Desktop: sidebar, storage zones side by side and the full week as a grid. Light and dark themes follow the device. |
 
 ## Architecture
@@ -35,7 +37,6 @@ Environment variables (put them in a `.env` file at the repository root):
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `INVITE_CODE` | yes | Code needed to create an account (min 6 characters). Share it only with your household. |
 | `GEMINI_API_KEY` | no | Free key from <https://aistudio.google.com/apikey>. Without it, receipt reading is disabled. |
 | `GEMINI_MODEL` | no | Defaults to `gemini-flash-latest`. |
 | `DOMAIN` | compose | Public domain pointing at the VPS; Caddy gets the HTTPS certificate for it. |
@@ -49,8 +50,9 @@ Environment variables (put them in a `.env` file at the repository root):
 
 ```bash
 npm install
-INVITE_CODE=dev-invite npm run dev -w server   # API on :3000
-npm run dev -w web                             # UI on :5173 (proxies /api)
+npm run create-admin -w server -- admin          # first time: creates the admin (asks for the password)
+npm run dev -w server                            # API on :3000
+npm run dev -w web                               # UI on :5173 (proxies /api)
 npm test                                       # server + web tests
 npm run typecheck
 ```
@@ -62,14 +64,14 @@ Requirements: Docker with Compose, ports 80/443 open, and a DNS record for your 
 ```bash
 git clone <repo> kitchen-storage && cd kitchen-storage
 cat > .env <<'EOF'
-INVITE_CODE=pick-a-long-secret
 GEMINI_API_KEY=your-key
 DOMAIN=kitchen.yourdomain.com
 EOF
 docker compose up -d --build
+docker compose exec -it app node dist/cli/create-admin.js <username>   # type the password, then Enter
 ```
 
-Open `https://<DOMAIN>`, create an account with the invite code, and use "Add to Home screen" / "Install app" on each device.
+Create your admin account, then open `https://<DOMAIN>`, sign in, generate codes in **Admin** for other households (or share your own code from **Mi casa**), and use "Add to Home screen" / "Install app" on each device.
 
 Data lives in the `kitchen_data` Docker volume (`/app/data/kitchen.sqlite` inside the container). To back it up:
 
@@ -86,7 +88,7 @@ For a small VPS that already runs nginx. The app is built locally and only the r
 One-time setup on the VPS (as root):
 
 1. `useradd --system --home-dir /opt/kitchenstorage --shell /usr/sbin/nologin kitchen`, then `mkdir -p /opt/kitchenstorage/data` and `chown kitchen:kitchen /opt/kitchenstorage/data`.
-2. Create `/opt/kitchenstorage/.env` (mode 640, group `kitchen`) with `INVITE_CODE`, `GEMINI_API_KEY`, `DATABASE_PATH=/opt/kitchenstorage/data/kitchen.sqlite`, `WEB_DIST_PATH=/opt/kitchenstorage/app/web/dist`, `HOST=127.0.0.1`, `PORT=3232`, `COOKIE_SECURE=true`, `TRUST_PROXY=true`.
+2. Create `/opt/kitchenstorage/.env` (mode 640, group `kitchen`) with `GEMINI_API_KEY`, `DATABASE_PATH=/opt/kitchenstorage/data/kitchen.sqlite`, `WEB_DIST_PATH=/opt/kitchenstorage/app/web/dist`, `HOST=127.0.0.1`, `PORT=3232`, `COOKIE_SECURE=true`, `TRUST_PROXY=true`.
 3. Copy `deploy/kitchenstorage.service` to `/etc/systemd/system/` and run `systemctl enable kitchenstorage`.
 4. Copy `deploy/nginx-site.conf` to `/etc/nginx/sites-available/<domain>`, replace `<DOMAIN>`, link it into `sites-enabled`, run `nginx -t && systemctl reload nginx`, then `certbot --nginx -d <domain>`.
 
@@ -95,6 +97,14 @@ Each release, from your machine:
 ```bash
 deploy/deploy.sh vps   # "vps" is the SSH host
 ```
+
+Create or reset the admin account once on the VPS (the password is read from stdin, so it stays out of the shell history):
+
+```bash
+cd /opt/kitchenstorage/app/server && sudo -u kitchen sh -c 'set -a; . /opt/kitchenstorage/.env; exec node dist/cli/create-admin.js <username>'
+```
+
+Running it again for an existing user makes them admin and resets their password. The first admin joins the household that holds any data created before households existed.
 
 The script installs dependencies from `package-lock.json`, uploads into `/opt/kitchenstorage` (not the shared `/tmp`) and waits up to 30 s for `/api/health`. If the new build does not come up, it puts the previous one back, restarts it and keeps the failed build in `/opt/kitchenstorage/app.failed`.
 
