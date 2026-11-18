@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createTestApp, signedIn } from './helpers.js';
-import type { DishSuggestion, FoodAssistant, StockLine } from '../src/assistant/application/assistant-service.js';
+import type { DishSuggestion, FoodAssistant, Recipe, RecipeSource, StockLine } from '../src/assistant/application/assistant-service.js';
 import { GeminiFoodAssistant, parseCategorizeResponse, parseDishesResponse } from '../src/assistant/infrastructure/gemini-food-assistant.js';
 
 let app: FastifyInstance;
@@ -16,19 +16,47 @@ const DISH: DishSuggestion = {
   uses: ['Huevos', 'Patatas'],
   missing: ['Cebolla'],
   steps: ['Pelar y freír las patatas', 'Batir los huevos y cuajar'],
+  sourceUrl: null,
+};
+
+const RECIPE: Recipe = {
+  id: '52772',
+  title: 'Spanish Tortilla',
+  url: 'https://www.themealdb.com/meal/52772',
+  ingredients: ['4 Eggs', '2 Potatoes'],
+  instructions: 'Fry the potatoes, add the eggs.',
 };
 
 /** Puts fruit in Frutas and leaves anything else unplaced; records what it was asked. */
-function fakeAssistant(calls: { categorize: string[][]; dishes: { stock: StockLine[]; wish: string }[] } = { categorize: [], dishes: [] }): FoodAssistant {
+type DishCall = { stock: StockLine[]; wish: string; recipes: Recipe[] };
+
+function fakeAssistant(
+  calls: { categorize: string[][]; dishes: DishCall[]; ingredients?: string[][] } = { categorize: [], dishes: [] },
+  dishes: DishSuggestion[] = [DISH],
+): FoodAssistant {
   return {
     async categorize(names, categories) {
       calls.categorize.push(names);
       expect(categories).toContain('Frutas');
       return names.map((name) => (['Manzana', 'Pera'].includes(name) ? 'frutas' : null));
     },
-    async suggestDishes(stock, wish) {
-      calls.dishes.push({ stock, wish });
-      return [DISH];
+    async ingredientNames(names) {
+      calls.ingredients?.push(names);
+      return names.map((name) => (name === 'Huevos' ? 'eggs' : name.toLowerCase()));
+    },
+    async suggestDishes(stock, wish, recipes) {
+      calls.dishes.push({ stock, wish, recipes });
+      return dishes;
+    },
+  };
+}
+
+function fakeRecipes(asked: string[][], result: Recipe[] | Error = [RECIPE]): RecipeSource {
+  return {
+    async find(ingredients) {
+      asked.push(ingredients);
+      if (result instanceof Error) throw result;
+      return result;
     },
   };
 }
@@ -143,7 +171,11 @@ describe('AI classify button', () => {
     await app.close();
 
     app = await createTestApp(undefined, {
-      foodAssistant: { categorize: () => Promise.reject(new Error('quota')), suggestDishes: () => Promise.reject(new Error('quota')) },
+      foodAssistant: {
+        categorize: () => Promise.reject(new Error('quota')),
+        ingredientNames: () => Promise.reject(new Error('quota')),
+        suggestDishes: () => Promise.reject(new Error('quota')),
+      },
     });
     const bea = await signedIn(app, 'bea');
     await addItem(bea, 'Manzana');
@@ -156,7 +188,7 @@ describe('AI classify button', () => {
 
 describe('dish suggestions', () => {
   it('suggests dishes from the available stock and the wish', async () => {
-    const calls = { categorize: [], dishes: [] as { stock: StockLine[]; wish: string }[] };
+    const calls = { categorize: [], dishes: [] as DishCall[] };
     app = await createTestApp(undefined, { foodAssistant: fakeAssistant(calls) });
     const ana = await signedIn(app);
     await addItem(ana, 'Huevos', { location: 'fridge', quantity: 6 });
@@ -165,7 +197,41 @@ describe('dish suggestions', () => {
     const res = await ana({ method: 'POST', url: '/api/dishes/suggest', payload: { wish: '  algo rápido ' } });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ dishes: [DISH] });
-    expect(calls.dishes).toEqual([{ stock: [{ name: 'Huevos', available: 6, unit: 'unit', location: 'fridge' }], wish: 'algo rápido' }]);
+    expect(calls.dishes).toEqual([{ stock: [{ name: 'Huevos', available: 6, unit: 'unit', location: 'fridge' }], wish: 'algo rápido', recipes: [] }]);
+  });
+
+  it('gives the AI recipes from the recipe database that use the stock, in English', async () => {
+    const calls = { categorize: [], dishes: [] as DishCall[], ingredients: [] as string[][] };
+    const asked: string[][] = [];
+    app = await createTestApp(undefined, { foodAssistant: fakeAssistant(calls), recipeSource: fakeRecipes(asked) });
+    const ana = await signedIn(app);
+    await addItem(ana, 'Huevos', { location: 'fridge', quantity: 6 });
+    await addItem(ana, 'Patatas');
+
+    expect((await ana({ method: 'POST', url: '/api/dishes/suggest', payload: {} })).statusCode).toBe(200);
+    expect(calls.ingredients).toEqual([['Huevos', 'Patatas']]);
+    expect(asked).toEqual([['eggs', 'patatas']]);
+    expect(calls.dishes[0]!.recipes).toEqual([RECIPE]);
+  });
+
+  it('still suggests dishes when the recipe database fails', async () => {
+    const calls = { categorize: [], dishes: [] as DishCall[] };
+    app = await createTestApp(undefined, { foodAssistant: fakeAssistant(calls), recipeSource: fakeRecipes([], new Error('offline')) });
+    const ana = await signedIn(app);
+    await addItem(ana, 'Huevos');
+    const res = await ana({ method: 'POST', url: '/api/dishes/suggest', payload: {} });
+    expect(res.json()).toEqual({ dishes: [DISH] });
+    expect(calls.dishes[0]!.recipes).toEqual([]);
+  });
+
+  it('shows first the dishes that need the fewest things to buy', async () => {
+    const dish = (title: string, missing: string[]) => ({ ...DISH, title, missing });
+    const dishes = [dish('Fresca', ['Tofu', 'Jengibre', 'Soja']), dish('Completa', []), dish('Casi', ['Cebolla']), dish('También completa', [])];
+    app = await createTestApp(undefined, { foodAssistant: fakeAssistant(undefined, dishes) });
+    const ana = await signedIn(app);
+    await addItem(ana, 'Huevos');
+    const titles = (await ana({ method: 'POST', url: '/api/dishes/suggest', payload: {} })).json().dishes.map((d: DishSuggestion) => d.title);
+    expect(titles).toEqual(['Completa', 'También completa', 'Casi', 'Fresca']);
   });
 
   it('asks for food first when nothing is available', async () => {
@@ -278,10 +344,30 @@ describe('GeminiFoodAssistant', () => {
 
   it('suggests dishes from the stock and passes the wish along', async () => {
     const bodies: string[] = [];
-    stubGemini({ dishes: [DISH] }, bodies, []);
-    const dishes = await new GeminiFoodAssistant('k', 'm').suggestDishes([{ name: 'Huevos', available: 6, unit: 'unit', location: 'fridge' }], 'cena ligera');
+    stubGemini({ dishes: [{ ...DISH, recipeId: '' }] }, bodies, []);
+    const dishes = await new GeminiFoodAssistant('k', 'm').suggestDishes([{ name: 'Huevos', available: 6, unit: 'unit', location: 'fridge' }], 'cena ligera', []);
     expect(dishes).toEqual([DISH]);
     expect(bodies[0]).toContain('Huevos');
     expect(bodies[0]).toContain('cena ligera');
+    expect(bodies[0]).toContain('At least 3 of them must be made with the available food');
+  });
+
+  it('sends the recipes as inspiration and links each dish to the recipe it adapts', async () => {
+    const bodies: string[] = [];
+    stubGemini({ dishes: [{ ...DISH, recipeId: '52772' }, { ...DISH, title: 'Otra', recipeId: '999' }] }, bodies, []);
+    const dishes = await new GeminiFoodAssistant('k', 'm').suggestDishes([{ name: 'Huevos', available: 6, unit: 'unit', location: 'fridge' }], '', [RECIPE]);
+    expect(dishes).toEqual([
+      { ...DISH, sourceUrl: RECIPE.url },
+      { ...DISH, title: 'Otra', sourceUrl: null },
+    ]);
+    expect(bodies[0]).toContain('Spanish Tortilla');
+  });
+
+  it('turns food names into English ingredient names for the recipe database', async () => {
+    const bodies: string[] = [];
+    stubGemini({ ingredients: ['eggs', ' potatoes ', '', 'eggs'] }, bodies, []);
+    const names = await new GeminiFoodAssistant('k', 'm').ingredientNames(['Huevos', 'Patatas']);
+    expect(names).toEqual(['eggs', 'potatoes']);
+    expect(bodies[0]).toContain('Patatas');
   });
 });

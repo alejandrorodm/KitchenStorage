@@ -4,9 +4,9 @@ import type { ServerResponse } from 'node:http';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
-import { AssistantService, type FoodAssistant } from './assistant/application/assistant-service.js';
+import { AssistantService, type FoodAssistant, type RecipeSource } from './assistant/application/assistant-service.js';
 import { registerAssistantRoutes } from './assistant/infrastructure/assistant-routes.js';
 import { AuthService } from './auth/auth-service.js';
 import { CategoryService } from './categories/application/category-service.js';
@@ -43,6 +43,8 @@ export interface AppOptions {
   receiptParser: ReceiptParser | null;
   /** Text AI (categories, dish ideas); without it those actions are disabled. */
   foodAssistant?: FoodAssistant | null;
+  /** Recipe database the dish ideas draw on; without it the AI suggests on its own. */
+  recipeSource?: RecipeSource | null;
   /** Web Push delivery; without it, push notifications are disabled. */
   pushSender?: PushSender | null;
   cookieSecure: boolean;
@@ -75,7 +77,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.addHook('onClose', async () => db.close());
 
   // Each request works on the kitchen of the signed-in user's household.
-  const kitchenFor = (request: FastifyRequest) => kitchen(db, requireUser(request).householdId, events, options.receiptParser, options.foodAssistant ?? null, notifier);
+  const kitchenFor = (request: FastifyRequest) => kitchen(db, requireUser(request).householdId, events, options.receiptParser, options.foodAssistant ?? null, notifier, options.recipeSource ?? null, app.log);
 
   await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: MAX_RECEIPT_BYTES, files: 1 } });
@@ -157,6 +159,8 @@ function kitchen(
   receiptParser: ReceiptParser | null,
   foodAssistant: FoodAssistant | null,
   notifier: PushNotifier,
+  recipeSource: RecipeSource | null,
+  log: FastifyBaseLogger,
 ) {
   const foodItems = new SqliteFoodItemRepository(db, householdId);
   const categories = new CategoryService(new SqliteCategoryRepository(db, householdId), () => events.publish(householdId, 'inventory'));
@@ -184,7 +188,7 @@ function kitchen(
     events.publish(householdId, 'meals', 'inventory', 'shopping');
   });
   const receipts = new ReceiptService(receiptParser, inventory, categories);
-  const assistant = new AssistantService(foodAssistant, inventory, categories);
+  const assistant = new AssistantService(foodAssistant, inventory, categories, recipeSource, (err, message) => log.warn({ err }, message));
   const dishes = new DishService(new SqliteDishRepository(db, householdId), () => events.publish(householdId, 'dishes'));
   return { inventory, categories, meals, shopping, receipts, assistant, dishes };
 }
