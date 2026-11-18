@@ -1,11 +1,12 @@
 import { Plus, X } from 'lucide-react';
-import { LOCATIONS, UNITS, type ReceiptLine } from '../../api/types';
+import { LOCATIONS, UNITS, type Category, type ReceiptLine } from '../../api/types';
 import { countOf, LOCATION_LABEL, UNIT_LABEL } from '../../shared/labels';
 import { Button, IconButton } from '../atoms/Button';
 import { NumberInput, Select, TextInput } from '../atoms/Field';
 
 interface ReceiptReviewProps {
   lines: ReceiptLine[];
+  categories: Category[];
   busy?: boolean;
   error?: string;
   onChange: (lines: ReceiptLine[]) => void;
@@ -13,13 +14,15 @@ interface ReceiptReviewProps {
   onCancel: () => void;
 }
 
-export function ReceiptReview({ lines, busy, error, onChange, onConfirm, onCancel }: ReceiptReviewProps) {
+export function ReceiptReview({ lines, categories, busy, error, onChange, onConfirm, onCancel }: ReceiptReviewProps) {
+  const categoryOptions = ['', ...categories.map((c) => c.id)];
+  const categoryLabels: Record<string, string> = { '': 'Sin sección', ...Object.fromEntries(categories.map((c) => [c.id, c.name])) };
   const update = (index: number, patch: Partial<ReceiptLine>) => onChange(lines.map((l, i) => (i === index ? { ...l, ...patch } : l)));
   const valid = lines.length > 0 && lines.every((l) => l.name.trim() && l.quantity > 0);
 
   return (
     <div className="form">
-      <p className="lead">Comprueba lo que se ha leído. Si ya tienes un producto con el mismo nombre, lugar y unidad, se suma a lo que hay.</p>
+      <p className="lead">Comprueba lo que se ha leído. La sección la propone la IA y puedes cambiarla. Si ya tienes un producto con el mismo nombre, lugar y unidad, se suma a lo que hay.</p>
       <ul className="receipt-lines">
         {lines.map((line, index) => (
           <li key={index} className="receipt-line" data-zone={line.location}>
@@ -27,6 +30,14 @@ export function ReceiptReview({ lines, busy, error, onChange, onConfirm, onCance
             <NumberInput className="receipt-qty" value={line.quantity} onChange={(e) => update(index, { quantity: Number(e.target.value) })} aria-label={`Cantidad de ${line.name}`} />
             <Select value={line.unit} options={UNITS} labels={UNIT_LABEL} onChange={(unit) => update(index, { unit })} aria-label={`Unidad de ${line.name}`} />
             <Select value={line.location} options={LOCATIONS} labels={LOCATION_LABEL} onChange={(location) => update(index, { location })} aria-label={`Dónde guardar ${line.name}`} />
+            <Select
+              className="receipt-category"
+              value={line.categoryId && categoryOptions.includes(line.categoryId) ? line.categoryId : ''}
+              options={categoryOptions}
+              labels={categoryLabels}
+              onChange={(categoryId) => update(index, { categoryId: categoryId || null })}
+              aria-label={`Sección de ${line.name}`}
+            />
             <IconButton icon={X} label={`Quitar ${line.name}`} onClick={() => onChange(lines.filter((_, i) => i !== index))} />
           </li>
         ))}

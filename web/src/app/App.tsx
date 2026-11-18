@@ -1,8 +1,9 @@
-import { CalendarDays, House, LogOut, Refrigerator, ScanLine, ShieldCheck, ShoppingCart, Sun, type LucideIcon } from 'lucide-react';
+import { CalendarDays, ChefHat, House, LogOut, Refrigerator, ScanLine, ShieldCheck, ShoppingCart, Sun, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useItems, useLogout, useMe, useShopping } from '../api/hooks';
 import type { User } from '../api/types';
 import { AdminPage } from '../features/admin/AdminPage';
+import { DishesPage } from '../features/dishes/DishesPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { HouseholdPage } from '../features/household/HouseholdPage';
 import { InventoryPage } from '../features/inventory/InventoryPage';
@@ -26,6 +27,7 @@ const NAV: NavItem[] = [
   { id: 'today', label: 'Hoy', icon: Sun, inTabBar: true },
   { id: 'inventory', label: 'Alimentos', icon: Refrigerator, inTabBar: true },
   { id: 'planner', label: 'Menú', icon: CalendarDays, inTabBar: true },
+  { id: 'dishes', label: 'Ideas', icon: ChefHat, inTabBar: true },
   { id: 'shopping', label: 'Compra', icon: ShoppingCart, inTabBar: true },
   { id: 'receipt', label: 'Escanear ticket', icon: ScanLine, inTabBar: false },
   { id: 'household', label: 'Mi casa', icon: House, inTabBar: false },
@@ -122,6 +124,7 @@ function Shell({ user }: { user: User }) {
           {section === 'today' && <TodayPage username={username} isAdmin={user.isAdmin} />}
           {section === 'inventory' && <InventoryPage />}
           {section === 'planner' && <PlannerPage />}
+          {section === 'dishes' && <DishesPage />}
           {section === 'shopping' && <ShoppingPage />}
           {section === 'receipt' && <ReceiptPage />}
           {section === 'household' && <HouseholdPage />}

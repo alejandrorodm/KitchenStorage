@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { notFound } from '../../shared/errors.js';
+import { AppError, notFound } from '../../shared/errors.js';
 import {
   normalizeName,
   roundQuantity,
@@ -26,6 +26,8 @@ export interface NewFoodItem {
   unit: Unit;
   /** Omitted or null: follow the household setting. */
   lowThreshold?: number | null;
+  /** Omitted or null: no category. */
+  categoryId?: string | null;
 }
 
 export type FoodItemChanges = Partial<NewFoodItem>;
@@ -39,6 +41,8 @@ export class InventoryService {
   constructor(
     private readonly items: FoodItemRepository,
     private readonly afterStockChange: () => void,
+    /** Whether a category exists in this household. */
+    private readonly categoryExists: (id: string) => boolean,
     private readonly now: () => Date = () => new Date(),
   ) {}
 
@@ -47,6 +51,7 @@ export class InventoryService {
   }
 
   create(input: NewFoodItem): FoodItemView {
+    this.checkCategory(input.categoryId);
     const timestamp = this.now().toISOString();
     const item: FoodItem = {
       id: randomUUID(),
@@ -55,6 +60,7 @@ export class InventoryService {
       quantity: roundQuantity(input.quantity),
       unit: input.unit,
       lowThreshold: input.lowThreshold ?? null,
+      categoryId: input.categoryId ?? null,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -64,6 +70,7 @@ export class InventoryService {
   }
 
   update(id: string, changes: FoodItemChanges): FoodItemView {
+    this.checkCategory(changes.categoryId);
     const current = this.mustGet(id);
     const next: FoodItem = {
       ...stripView(current),
@@ -83,6 +90,24 @@ export class InventoryService {
     return this.update(id, { quantity: Math.max(0, roundQuantity(current.quantity + delta)) });
   }
 
+  /**
+   * Sets the category of items that still have none (others are left alone),
+   * atomically and with one notification. Returns how many were placed.
+   */
+  assignCategories(assignments: { id: string; categoryId: string }[]): number {
+    for (const { categoryId } of assignments) this.checkCategory(categoryId);
+    const placed = this.items.runAtomically(() =>
+      assignments.filter(({ id, categoryId }) => {
+        const current = this.items.get(id);
+        if (!current || current.categoryId) return false;
+        this.items.update({ ...stripView(current), categoryId, updatedAt: this.now().toISOString() });
+        return true;
+      }).length,
+    );
+    if (placed) this.afterStockChange();
+    return placed;
+  }
+
   /** Re-evaluates alerts after the household threshold changed. */
   alertSettingsChanged(): void {
     this.afterStockChange();
@@ -96,9 +121,11 @@ export class InventoryService {
   /**
    * Adds purchased stock: merges into the item with the same name, location
    * and unit when it exists, otherwise creates a new item. All lines are
-   * applied atomically and listeners are notified once.
+   * applied atomically and listeners are notified once. A merged item keeps
+   * its category, or takes the line's when it had none.
    */
   addStock(lines: NewFoodItem[]): StockAddition[] {
+    for (const line of lines) this.checkCategory(line.categoryId);
     const results = this.items.runAtomically(() =>
       lines.map((line) => {
         const existing = this.items.findSame(normalizeName(line.name), line.location, line.unit);
@@ -111,6 +138,7 @@ export class InventoryService {
             quantity: roundQuantity(line.quantity),
             unit: line.unit,
             lowThreshold: line.lowThreshold ?? null,
+            categoryId: line.categoryId ?? null,
             createdAt: timestamp,
             updatedAt: timestamp,
           };
@@ -120,6 +148,7 @@ export class InventoryService {
         this.items.update({
           ...existing,
           quantity: roundQuantity(existing.quantity + line.quantity),
+          categoryId: existing.categoryId ?? line.categoryId ?? null,
           updatedAt: this.now().toISOString(),
         });
         return { id: existing.id, merged: true };
@@ -129,6 +158,10 @@ export class InventoryService {
     return results.map(({ id, merged }) => ({ item: this.mustGet(id), merged }));
   }
 
+  private checkCategory(categoryId: string | null | undefined): void {
+    if (categoryId && !this.categoryExists(categoryId)) throw new AppError(400, 'unknown_category', 'Esa sección no existe');
+  }
+
   private mustGet(id: string): FoodItemView {
     const item = this.items.get(id);
     if (!item) throw notFound('No se encontró el alimento');
@@ -136,7 +169,7 @@ export class InventoryService {
   }
 }
 
-function stripView({ planned: _p, available: _a, status: _s, ...item }: FoodItemView): FoodItem {
+function stripView({ planned: _p, available: _a, alertAt: _t, status: _s, ...item }: FoodItemView): FoodItem {
   return item;
 }
 

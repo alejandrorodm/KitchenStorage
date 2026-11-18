@@ -140,7 +140,7 @@ svg { flex-shrink: 0; }
   inset: auto 0 0 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   height: calc(var(--tabbar-h) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -811,9 +811,10 @@ select.input { padding-right: 8px; }
 }
 .receipt-line .receipt-name { grid-column: 1 / 3; }
 .receipt-line .icon-btn { grid-column: 3; grid-row: 1; }
+.receipt-line .receipt-category { grid-column: 1 / -1; }
 @media (min-width: 720px) {
-  .receipt-line { grid-template-columns: 2fr 90px 90px 140px auto; align-items: center; }
-  .receipt-line .receipt-name { grid-column: auto; }
+  .receipt-line { grid-template-columns: 2fr 90px 90px 140px 170px auto; align-items: center; }
+  .receipt-line .receipt-name, .receipt-line .receipt-category { grid-column: auto; }
   .receipt-line .icon-btn { grid-column: auto; grid-row: auto; }
 }
 
@@ -973,3 +974,32 @@ select.input { padding-right: 8px; }
 .admin-row-main .muted { overflow-wrap: anywhere; }
 .today-head-actions { grid-auto-flow: column; gap: 4px; }
 .sidebar-household { display: block; font-size: 0.8rem; font-weight: 500; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; }
+
+/* ------------------------------------------------------------------
+   Categories
+   ------------------------------------------------------------------ */
+.filters > .segmented { grid-column: 1 / -1; justify-self: start; }
+@media (min-width: 1000px) { .zones-categories { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; } }
+.item-place { font-weight: 600; color: var(--zone); }
+
+.category-add, .category-rename { display: flex; gap: 8px; align-items: center; }
+.category-add .input, .category-rename .input { flex: 1; min-width: 0; }
+.category-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.category-row { display: flex; align-items: center; gap: 8px; }
+.category-row .category-rename { flex: 1; min-width: 0; }
+.category-count { font-size: 0.85rem; white-space: nowrap; }
+.notice-ai { background: var(--surface-2); color: var(--ink-2); flex-wrap: wrap; align-items: center; }
+.notice-ai > span { flex: 1; min-width: 180px; }
+.notice-ai .btn svg { margin-top: 0; }
+
+/* ------------------------------------------------------------------
+   Dish ideas
+   ------------------------------------------------------------------ */
+.dish-list { display: grid; gap: 16px; list-style: none; padding: 0; margin: 0; }
+.dish { display: grid; gap: 10px; }
+.dish-time { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3); font-weight: 600; white-space: nowrap; }
+.dish-uses, .dish-missing { color: var(--ink-2); }
+.dish-missing strong { color: var(--low); }
+.dish-complete { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; }
+.dish summary { cursor: pointer; font-weight: 700; min-height: 32px; }
+.dish-steps { display: grid; gap: 6px; padding-left: 1.4em; margin-top: 6px; color: var(--ink-2); }

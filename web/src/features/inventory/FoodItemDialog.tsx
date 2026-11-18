@@ -1,4 +1,4 @@
-import { useDeleteItem, useHousehold, useSaveItem } from '../../api/hooks';
+import { useCategories, useDeleteItem, useHousehold, useSaveItem } from '../../api/hooks';
 import type { FoodItem, Location } from '../../api/types';
 import { Modal } from '../../components/atoms/Modal';
 import { useToast } from '../../components/atoms/Toast';
@@ -8,14 +8,16 @@ import { LOCATION_LABEL } from '../../shared/labels';
 interface FoodItemDialogProps {
   item: FoodItem | 'new';
   defaultLocation?: Location;
+  defaultCategoryId?: string | null;
   onClose: () => void;
 }
 
 /** Add or edit one food item; shared by the inventory and the home screen. */
-export function FoodItemDialog({ item, defaultLocation = 'fridge', onClose }: FoodItemDialogProps) {
+export function FoodItemDialog({ item, defaultLocation = 'fridge', defaultCategoryId, onClose }: FoodItemDialogProps) {
   const save = useSaveItem();
   const remove = useDeleteItem();
   const householdThreshold = useHousehold().data?.lowThreshold ?? 0;
+  const categories = useCategories().data ?? [];
   const toast = useToast();
   const isNew = item === 'new';
 
@@ -25,6 +27,8 @@ export function FoodItemDialog({ item, defaultLocation = 'fridge', onClose }: Fo
         item={isNew ? undefined : item}
         householdThreshold={householdThreshold}
         defaultLocation={defaultLocation}
+        categories={categories}
+        defaultCategoryId={defaultCategoryId}
         busy={save.isPending || remove.isPending}
         error={save.error?.message ?? remove.error?.message}
         onSubmit={(input) =>

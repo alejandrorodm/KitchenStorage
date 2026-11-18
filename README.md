@@ -8,7 +8,9 @@ Household app to track what is in the **fridge, freezer and pantry**, plan **bre
 |------|--------------|
 | Today | Home screen with today's three meals, what is running out and what is left to buy. |
 | Inventory | Add, edit, delete and +/- items manually. Each item has a place, quantity, unit and either its own "warn me at" threshold or the household one. |
-| Receipts | Take a photo of a receipt; Gemini reads the food lines, you review them, and they are added to stock (merged with items of the same name, place and unit). |
+| Categories | Every household starts with basic sections (Proteínas, Verduras, Frutas, Lácteos, Cereales y pasta, Legumbres, Bebidas, Salsas y condimentos, Dulces y snacks). Members can create, rename and delete them from **Secciones** in Alimentos; deleting one leaves its items without a section. The food list can be grouped by place or by section. |
+| Receipts | Take a photo of a receipt; Gemini reads the food lines and picks a section for each from the household's ones, you review them, and they are added to stock (merged with items of the same name, place and unit; a merged item keeps its section, or takes the new one if it had none). |
+| AI helpers | With `GEMINI_API_KEY` set: **Clasificar con IA** in Alimentos puts every item without a section into one of the household's sections (items it cannot place stay as they are; categorized items are never changed). **Ideas** suggests dishes from the available stock (optionally guided by a wish such as "algo rápido"), with the ingredients each one uses, what is missing (one tap adds it to the shopping list) and short steps. |
 | Planner | Week view (Mon–Sun × breakfast/lunch/dinner). Assign food from stock to each meal. |
 | Count | Planned food is subtracted from the **available** count right away. **Mark as eaten** takes it out of stock; **Undo** puts back exactly what was taken. |
 | Alerts | An item is *running low* when available ≤ threshold and *out of stock* when available ≤ 0. The threshold is a household setting in *Mi casa* (default 0: alert only when it runs out); an item can override it. Shown on the Today screen and as a badge on the Food (Alimentos) section. |
@@ -38,7 +40,7 @@ Environment variables (put them in a `.env` file at the repository root):
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GEMINI_API_KEY` | no | Free key from <https://aistudio.google.com/apikey>. Without it, receipt reading is disabled. |
+| `GEMINI_API_KEY` | no | Free key from <https://aistudio.google.com/apikey>. Without it, receipt reading and the AI helpers (classifying, dish ideas) are disabled. |
 | `GEMINI_MODEL` | no | Defaults to `gemini-flash-latest`. |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | no | Web Push keys; generate once with `npx web-push generate-vapid-keys`. Without them, push notifications are disabled. Changing them invalidates every device's subscription. |
 | `VAPID_SUBJECT` | no | Contact for push services (`mailto:` or `https:` URL). Defaults to `https://kitchen.alejandrorodm.com`. |

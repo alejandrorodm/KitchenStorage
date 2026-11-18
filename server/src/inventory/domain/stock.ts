@@ -14,6 +14,8 @@ export interface FoodItem {
   unit: Unit;
   /** The item's own alert threshold; null follows the household setting. */
   lowThreshold: number | null;
+  /** The household category it belongs to, if any. */
+  categoryId: string | null;
   createdAt: string;
   updatedAt: string;
 }

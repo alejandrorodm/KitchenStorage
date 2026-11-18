@@ -1,4 +1,4 @@
-import { ChevronRight, CircleCheck, House, LogOut, Plus, ScanLine, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { ChefHat, ChevronRight, CircleCheck, House, LogOut, Plus, ScanLine, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { useItems, useLogout, useMeals, useShopping } from '../../api/hooks';
 import { MEAL_TYPES, type FoodItem, type MealType } from '../../api/types';
@@ -56,6 +56,9 @@ export function TodayPage({ username, isAdmin }: { username: string; isAdmin: bo
         </Button>
         <Button icon={ScanLine} onClick={() => navigate('receipt')}>
           Escanear ticket
+        </Button>
+        <Button icon={ChefHat} onClick={() => navigate('dishes')}>
+          Ideas de platos
         </Button>
       </div>
 

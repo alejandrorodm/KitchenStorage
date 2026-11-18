@@ -7,8 +7,9 @@ export const PASSWORD = 'correct horse battery';
 export const fakeReceiptParser: ReceiptParser = {
   async parse() {
     return [
-      { name: 'Leche entera', quantity: 6, unit: 'l', location: 'pantry' },
-      { name: 'Pechuga de pollo', quantity: 0.5, unit: 'kg', location: 'fridge' },
+      { name: 'Leche entera', quantity: 6, unit: 'l', location: 'pantry', category: 'lacteos' },
+      { name: 'Pechuga de pollo', quantity: 0.5, unit: 'kg', location: 'fridge', category: 'Proteínas' },
+      { name: 'Pan', quantity: 1, unit: 'unit', location: 'pantry', category: 'Panadería' },
     ];
   },
 };

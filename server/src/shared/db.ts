@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { insertDefaultCategories } from '../categories/infrastructure/sqlite-category-repository.js';
 import { generateInviteCode } from './invite-code.js';
 
 export type Db = DatabaseSync;
@@ -165,6 +166,25 @@ export const MIGRATIONS: Migration[] = [
     );
     CREATE INDEX push_subscriptions_household ON push_subscriptions (household_id);
   `,
+  // v5: food categories per household. Existing households get the basic ones; items start uncategorized.
+  (db) => {
+    db.exec(`
+      CREATE TABLE categories (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        name_key TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE (household_id, name_key)
+      );
+      ALTER TABLE food_items ADD COLUMN category_id TEXT REFERENCES categories(id) ON DELETE SET NULL;
+      CREATE INDEX food_items_category ON food_items (category_id);
+    `);
+    // Frozen here: later edits to DEFAULT_CATEGORIES must not change what this migration seeds.
+    const names = ['Proteínas', 'Verduras', 'Frutas', 'Lácteos', 'Cereales y pasta', 'Legumbres', 'Bebidas', 'Salsas y condimentos', 'Dulces y snacks'];
+    const createdAt = new Date().toISOString();
+    for (const { id } of db.prepare('SELECT id FROM households').all() as { id: string }[]) insertDefaultCategories(db, id, createdAt, names);
+  },
 ];
 
 export function openDatabase(path: string): Db {

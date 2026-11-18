@@ -41,6 +41,12 @@ export interface HouseholdSummary {
   members: string[];
 }
 
+/** A food category of the household, such as Proteínas or Frutas. */
+export interface Category {
+  id: string;
+  name: string;
+}
+
 export interface FoodItem {
   id: string;
   name: string;
@@ -49,6 +55,7 @@ export interface FoodItem {
   unit: Unit;
   /** The item's own alert threshold; null follows the household setting. */
   lowThreshold: number | null;
+  categoryId: string | null;
   planned: number;
   available: number;
   /** The threshold in effect (its own or the household's). */
@@ -64,6 +71,7 @@ export interface FoodItemInput {
   quantity: number;
   unit: Unit;
   lowThreshold?: number | null;
+  categoryId?: string | null;
 }
 
 export interface Allocation {
@@ -106,4 +114,16 @@ export interface ReceiptLine {
   quantity: number;
   unit: Unit;
   location: Location;
+  /** Suggested by the AI from the household categories; null when none fits. */
+  categoryId: string | null;
+}
+
+/** A dish idea from the AI, built around what is in stock. */
+export interface DishSuggestion {
+  title: string;
+  description: string;
+  minutes: number;
+  uses: string[];
+  missing: string[];
+  steps: string[];
 }

@@ -1,6 +1,6 @@
 import { Camera, ImageUp, Info, LoaderCircle } from 'lucide-react';
 import { useState, type ChangeEvent } from 'react';
-import { useConfirmReceipt, useReadReceipt, useReceiptStatus } from '../../api/hooks';
+import { useCategories, useConfirmReceipt, useReadReceipt, useReceiptStatus } from '../../api/hooks';
 import type { ReceiptLine } from '../../api/types';
 import { useNavigate } from '../../app/navigation';
 import { EmptyState } from '../../components/atoms/EmptyState';
@@ -15,6 +15,7 @@ export function ReceiptPage() {
   const status = useReceiptStatus();
   const read = useReadReceipt();
   const confirm = useConfirmReceipt();
+  const categories = useCategories().data ?? [];
   const [lines, setLines] = useState<ReceiptLine[] | null>(null);
 
   const reset = () => {
@@ -46,6 +47,7 @@ export function ReceiptPage() {
         <PageHeader title="Revisar ticket" kicker={countOf(lines.length, 'producto leído', 'productos leídos')} />
         <ReceiptReview
           lines={lines}
+          categories={categories}
           busy={confirm.isPending}
           error={confirm.error?.message}
           onChange={setLines}

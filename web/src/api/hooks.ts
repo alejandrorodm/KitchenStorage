@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { disablePush } from '../shared/push';
 import { api } from './client';
-import type { FoodItem, FoodItemInput, Household, HouseholdSummary, Invite, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
+import type { Category, DishSuggestion, FoodItem, FoodItemInput, Household, HouseholdSummary, Invite, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
 
 export const keys = {
   me: ['me'] as const,
   items: ['inventory', 'items'] as const,
+  categories: ['inventory', 'categories'] as const,
   meals: (from: string, to: string) => ['meals', from, to] as const,
   shopping: ['shopping'] as const,
   receiptStatus: ['receipts', 'status'] as const,
+  aiStatus: ['ai', 'status'] as const,
   household: ['household'] as const,
   push: ['push'] as const,
   invites: ['admin', 'invites'] as const,
@@ -82,6 +84,24 @@ export function useDeleteItem() {
   return useMutation({
     mutationFn: (id: string) => api<void>('DELETE', `/api/items/${id}`),
     onSuccess: () => invalidate(),
+  });
+}
+
+// Categories (under the inventory topic, so live events refresh them too)
+
+export function useCategories() {
+  return useQuery({ queryKey: keys.categories, queryFn: () => api<Category[]>('GET', '/api/categories') });
+}
+
+export function useCategoryAction() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (action: { type: 'create'; name: string } | { type: 'rename'; id: string; name: string } | { type: 'delete'; id: string }) => {
+      if (action.type === 'create') return api<Category | void>('POST', '/api/categories', { name: action.name });
+      if (action.type === 'rename') return api<Category | void>('PATCH', `/api/categories/${action.id}`, { name: action.name });
+      return api<Category | void>('DELETE', `/api/categories/${action.id}`);
+    },
+    onSuccess: () => invalidate([['inventory']]),
   });
 }
 
@@ -161,6 +181,27 @@ export function useConfirmReceipt() {
   return useMutation({
     mutationFn: (lines: ReceiptLine[]) => api<{ merged: boolean }[]>('POST', '/api/receipts/confirm', { lines }),
     onSuccess: () => invalidate(),
+  });
+}
+
+// AI helpers
+
+export function useAiStatus() {
+  return useQuery({ queryKey: keys.aiStatus, queryFn: () => api<{ enabled: boolean }>('GET', '/api/ai/status'), staleTime: Infinity });
+}
+
+/** Lets the AI place the items that have no category yet. */
+export function useCategorize() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: () => api<{ categorized: number; remaining: number }>('POST', '/api/items/categorize'),
+    onSuccess: () => invalidate([['inventory']]),
+  });
+}
+
+export function useSuggestDishes() {
+  return useMutation({
+    mutationFn: (wish: string) => api<{ dishes: DishSuggestion[] }>('POST', '/api/dishes/suggest', { wish }),
   });
 }
 
