@@ -31,7 +31,9 @@ export class ReceiptService {
       return await this.parser.parse(image, mimeType);
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError(502, 'receipt_read_failed', 'No se pudo leer el ticket. Inténtalo de nuevo o añade los productos a mano');
+      throw new AppError(502, 'receipt_read_failed', 'No se pudo leer el ticket. Inténtalo de nuevo o añade los productos a mano', {
+        cause: error,
+      });
     }
   }
 
