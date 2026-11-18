@@ -90,6 +90,24 @@ export class InventoryService {
     return this.update(id, { quantity: Math.max(0, roundQuantity(current.quantity + delta)) });
   }
 
+  /**
+   * Sets the category of items that still have none (others are left alone),
+   * atomically and with one notification. Returns how many were placed.
+   */
+  assignCategories(assignments: { id: string; categoryId: string }[]): number {
+    for (const { categoryId } of assignments) this.checkCategory(categoryId);
+    const placed = this.items.runAtomically(() =>
+      assignments.filter(({ id, categoryId }) => {
+        const current = this.items.get(id);
+        if (!current || current.categoryId) return false;
+        this.items.update({ ...stripView(current), categoryId, updatedAt: this.now().toISOString() });
+        return true;
+      }).length,
+    );
+    if (placed) this.afterStockChange();
+    return placed;
+  }
+
   /** Re-evaluates alerts after the household threshold changed. */
   alertSettingsChanged(): void {
     this.afterStockChange();

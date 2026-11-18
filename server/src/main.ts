@@ -1,12 +1,13 @@
 import { buildApp } from './app.js';
 import { WebPushSender } from './notifications/infrastructure/web-push-sender.js';
+import { GeminiFoodAssistant } from './assistant/infrastructure/gemini-food-assistant.js';
 import { GeminiReceiptParser } from './receipts/infrastructure/gemini-receipt-parser.js';
 
 const env = process.env;
 
-const receiptParser = env.GEMINI_API_KEY
-  ? new GeminiReceiptParser(env.GEMINI_API_KEY, env.GEMINI_MODEL ?? 'gemini-flash-latest')
-  : null;
+const geminiModel = env.GEMINI_MODEL ?? 'gemini-flash-latest';
+const receiptParser = env.GEMINI_API_KEY ? new GeminiReceiptParser(env.GEMINI_API_KEY, geminiModel) : null;
+const foodAssistant = env.GEMINI_API_KEY ? new GeminiFoodAssistant(env.GEMINI_API_KEY, geminiModel) : null;
 
 const pushSender =
   env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY
@@ -16,6 +17,7 @@ const pushSender =
 const app = await buildApp({
   databasePath: env.DATABASE_PATH ?? 'data/kitchen.sqlite',
   receiptParser,
+  foodAssistant,
   pushSender,
   cookieSecure: env.COOKIE_SECURE === 'true',
   webDistPath: env.WEB_DIST_PATH,
@@ -23,7 +25,7 @@ const app = await buildApp({
   logger: true,
 });
 
-if (!receiptParser) app.log.warn('GEMINI_API_KEY not set: receipt reading is disabled');
+if (!receiptParser) app.log.warn('GEMINI_API_KEY not set: receipt reading and the AI helpers are disabled');
 if (!pushSender) app.log.warn('VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY not set: push notifications are disabled');
 
 const shutdown = async () => {

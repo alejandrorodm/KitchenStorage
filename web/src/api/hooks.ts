@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { disablePush } from '../shared/push';
 import { api } from './client';
-import type { Category, FoodItem, FoodItemInput, Household, HouseholdSummary, Invite, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
+import type { Category, DishSuggestion, FoodItem, FoodItemInput, Household, HouseholdSummary, Invite, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -10,6 +10,7 @@ export const keys = {
   meals: (from: string, to: string) => ['meals', from, to] as const,
   shopping: ['shopping'] as const,
   receiptStatus: ['receipts', 'status'] as const,
+  aiStatus: ['ai', 'status'] as const,
   household: ['household'] as const,
   push: ['push'] as const,
   invites: ['admin', 'invites'] as const,
@@ -180,6 +181,27 @@ export function useConfirmReceipt() {
   return useMutation({
     mutationFn: (lines: ReceiptLine[]) => api<{ merged: boolean }[]>('POST', '/api/receipts/confirm', { lines }),
     onSuccess: () => invalidate(),
+  });
+}
+
+// AI helpers
+
+export function useAiStatus() {
+  return useQuery({ queryKey: keys.aiStatus, queryFn: () => api<{ enabled: boolean }>('GET', '/api/ai/status'), staleTime: Infinity });
+}
+
+/** Lets the AI place the items that have no category yet. */
+export function useCategorize() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: () => api<{ categorized: number; remaining: number }>('POST', '/api/items/categorize'),
+    onSuccess: () => invalidate([['inventory']]),
+  });
+}
+
+export function useSuggestDishes() {
+  return useMutation({
+    mutationFn: (wish: string) => api<{ dishes: DishSuggestion[] }>('POST', '/api/dishes/suggest', { wish }),
   });
 }
 

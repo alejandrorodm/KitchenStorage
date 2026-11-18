@@ -23,7 +23,7 @@ describe('receipts', () => {
     const request = await signedIn(app);
     const res = await request({ method: 'POST', url: '/api/receipts/read', ...multipart('image/jpeg') });
     expect(res.statusCode).toBe(200);
-    expect(res.json().lines).toHaveLength(2);
+    expect(res.json().lines).toHaveLength(3);
     expect((await request({ method: 'GET', url: '/api/items' })).json()).toEqual([]);
   });
 
@@ -82,16 +82,16 @@ describe('parseGeminiResponse', () => {
     const lines = parseGeminiResponse(
       JSON.stringify({
         items: [
-          { name: 'Yogur', quantity: 4, unit: 'unit', location: 'fridge' },
-          { name: 'Queso', quantity: 1, unit: 'pack', location: 'cellar' },
+          { name: 'Yogur', quantity: 4, unit: 'unit', location: 'fridge', category: 'Lácteos' },
+          { name: 'Queso', quantity: 1, unit: 'pack', location: 'cellar', category: '' },
           { name: '', quantity: 1, unit: 'unit', location: 'fridge' },
           { name: 'Agua', quantity: -1, unit: 'l', location: 'pantry' },
         ],
       }),
     );
     expect(lines).toEqual([
-      { name: 'Yogur', quantity: 4, unit: 'unit', location: 'fridge' },
-      { name: 'Queso', quantity: 1, unit: 'unit', location: 'pantry' },
+      { name: 'Yogur', quantity: 4, unit: 'unit', location: 'fridge', category: 'Lácteos' },
+      { name: 'Queso', quantity: 1, unit: 'unit', location: 'pantry', category: null },
     ]);
   });
 });
@@ -102,19 +102,22 @@ describe('GeminiReceiptParser', () => {
   // Structured JSON output only exists in v1beta; the SDK defaults to v1, which rejects it.
   it('calls the v1beta generateContent endpoint and parses its JSON answer', async () => {
     const urls: string[] = [];
-    vi.stubGlobal('fetch', async (input: string | URL | Request) => {
+    const bodies: string[] = [];
+    vi.stubGlobal('fetch', async (input: string | URL | Request, init?: RequestInit) => {
       urls.push(input instanceof Request ? input.url : String(input));
-      const text = JSON.stringify({ items: [{ name: 'Leche', quantity: 6, unit: 'l', location: 'pantry' }] });
+      bodies.push(String(init?.body ?? ''));
+      const text = JSON.stringify({ items: [{ name: 'Leche', quantity: 6, unit: 'l', location: 'pantry', category: 'Lácteos' }] });
       return new Response(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text }] } }] }), {
         headers: { 'content-type': 'application/json' },
       });
     });
 
-    const lines = await new GeminiReceiptParser('test-key', 'gemini-2.5-flash').parse(Buffer.from([0xff, 0xd8]), 'image/jpeg');
+    const lines = await new GeminiReceiptParser('test-key', 'gemini-2.5-flash').parse(Buffer.from([0xff, 0xd8]), 'image/jpeg', ['Lácteos', 'Frutas']);
 
     expect(urls).toHaveLength(1);
     expect(urls[0]).toContain('/v1beta/models/gemini-2.5-flash:generateContent');
-    expect(lines).toEqual([{ name: 'Leche', quantity: 6, unit: 'l', location: 'pantry' }]);
+    expect(bodies[0]).toContain('Categories: [\\"Lácteos\\",\\"Frutas\\"]');
+    expect(lines).toEqual([{ name: 'Leche', quantity: 6, unit: 'l', location: 'pantry', category: 'Lácteos' }]);
   });
 });
 

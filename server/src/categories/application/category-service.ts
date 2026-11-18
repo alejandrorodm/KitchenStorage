@@ -27,6 +27,12 @@ export class CategoryService {
     return this.categories.get(id) !== undefined;
   }
 
+  /** Maps a category name (e.g. chosen by the AI) to its id, ignoring case and accents; unknown names give null. */
+  resolver(): (name: string | null | undefined) => string | null {
+    const byKey = new Map(this.categories.list().map((c) => [normalizeName(c.name), c.id]));
+    return (name) => (name ? (byKey.get(normalizeName(name)) ?? null) : null);
+  }
+
   create(name: string): Category {
     const category = { id: randomUUID(), name: name.trim() };
     this.ensureFree(category.name);

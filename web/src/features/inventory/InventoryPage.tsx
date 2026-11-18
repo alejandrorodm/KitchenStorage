@@ -1,15 +1,16 @@
-import { Plus, ScanLine, Search, SearchX, Tags, TriangleAlert } from 'lucide-react';
+import { Plus, ScanLine, Search, SearchX, Sparkles, Tags, TriangleAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useAdjustItem, useCategories, useItems } from '../../api/hooks';
+import { useAdjustItem, useAiStatus, useCategories, useCategorize, useItems } from '../../api/hooks';
 import { LOCATIONS, type FoodItem, type Location } from '../../api/types';
 import { useNavigate } from '../../app/navigation';
 import { Button } from '../../components/atoms/Button';
 import { EmptyState } from '../../components/atoms/EmptyState';
+import { useToast } from '../../components/atoms/Toast';
 import { Segmented } from '../../components/atoms/Segmented';
 import { FoodItemRow } from '../../components/molecules/FoodItemRow';
 import { PageHeader } from '../../components/molecules/PageHeader';
 import { LOCATION_ICON } from '../../shared/icons';
-import { LOCATION_LABEL } from '../../shared/labels';
+import { countOf, LOCATION_LABEL } from '../../shared/labels';
 import { groupByCategory, UNCATEGORIZED } from '../../shared/categories';
 import { CategoriesDialog } from './CategoriesDialog';
 import { FoodItemDialog } from './FoodItemDialog';
@@ -39,7 +40,20 @@ export function InventoryPage() {
   const [editing, setEditing] = useState<{ item: FoodItem | 'new'; location?: Location; categoryId?: string | null } | null>(null);
   const [managing, setManaging] = useState(false);
   const [view, setViewState] = useState<View>(storedView);
-  const categories = useCategories().data ?? [];
+  const categoriesQuery = useCategories();
+  const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
+  const aiEnabled = useAiStatus().data?.enabled ?? false;
+  const categorize = useCategorize();
+  const toast = useToast();
+  const classify = () =>
+    categorize.mutate(undefined, {
+      onSuccess: ({ categorized, remaining }) =>
+        toast(
+          categorized
+            ? `${countOf(categorized, 'alimento clasificado', 'alimentos clasificados')}${remaining ? `; ${remaining} sin sección clara` : ''}`
+            : 'La IA no encontró una sección para ninguno',
+        ),
+    });
   const setView = (next: View) => {
     setViewState(next);
     try {
@@ -51,6 +65,8 @@ export function InventoryPage() {
 
   const all = useMemo(() => [...(items.data ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'es')), [items.data]);
   const alerts = all.filter((item) => item.status !== 'ok').length;
+  const known = new Set(categories.map((c) => c.id));
+  const uncategorized = all.filter((item) => !item.categoryId || !known.has(item.categoryId)).length;
   const term = search.trim().toLocaleLowerCase('es');
   const visible = all.filter((item) => !term || item.name.toLocaleLowerCase('es').includes(term));
   const zones = filter === 'all' ? LOCATIONS : [filter];
@@ -80,6 +96,26 @@ export function InventoryPage() {
           <span>
             {alerts === 1 ? '1 alimento se está acabando.' : `${alerts} alimentos se están acabando.`} Ya están en la lista de la compra.
           </span>
+        </p>
+      )}
+
+      {categoriesQuery.isSuccess && uncategorized > 0 && (
+        <div className="notice notice-ai" role="status">
+          <Tags aria-hidden size={18} />
+          <span>
+            {uncategorized === 1 ? '1 alimento no tiene sección.' : `${uncategorized} alimentos no tienen sección.`}{' '}
+            {aiEnabled ? 'La IA puede colocarlos en las que tienes.' : 'Puedes asignársela al editarlos.'}
+          </span>
+          {aiEnabled && (
+            <Button size="sm" variant="primary" icon={Sparkles} onClick={classify} disabled={categorize.isPending} className="notice-action">
+              {categorize.isPending ? 'Clasificando…' : 'Clasificar con IA'}
+            </Button>
+          )}
+        </div>
+      )}
+      {categorize.error && (
+        <p className="error" role="alert">
+          {categorize.error.message}
         </p>
       )}
 

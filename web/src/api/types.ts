@@ -114,4 +114,16 @@ export interface ReceiptLine {
   quantity: number;
   unit: Unit;
   location: Location;
+  /** Suggested by the AI from the household categories; null when none fits. */
+  categoryId: string | null;
+}
+
+/** A dish idea from the AI, built around what is in stock. */
+export interface DishSuggestion {
+  title: string;
+  description: string;
+  minutes: number;
+  uses: string[];
+  missing: string[];
+  steps: string[];
 }

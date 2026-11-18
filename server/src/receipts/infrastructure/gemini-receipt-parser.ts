@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 import { LOCATIONS, UNITS } from '../../inventory/domain/stock.js';
-import type { ReceiptLine, ReceiptParser } from '../application/receipt-service.js';
+import type { ParsedReceiptLine, ReceiptParser } from '../application/receipt-service.js';
 
 const PROMPT = `You read photos of supermarket receipts (usually Spanish) for a household kitchen inventory.
 Return only food and drink products; ignore totals, taxes, discounts, bags, cleaning or hygiene products.
@@ -9,6 +9,7 @@ For each product:
 - name: a short, readable Spanish product name without brand codes or abbreviations (e.g. "LECHE SEMI HCD 6X1L" -> "Leche semidesnatada").
 - quantity and unit: the amount bought. Use "kg" or "g" for weighed products, "l" or "ml" when the volume is clear (multiply packs, e.g. 6x1L -> 6 l), otherwise "unit" with the number of units.
 - location: where it is normally stored at home: "fridge", "freezer" or "pantry".
+- category: the household category that fits best, written exactly as one of the categories listed below, or an empty string when none fits.
 If the image is not a receipt, return an empty list.`;
 
 const RESPONSE_SCHEMA = {
@@ -23,8 +24,9 @@ const RESPONSE_SCHEMA = {
           quantity: { type: 'number' },
           unit: { type: 'string', enum: [...UNITS] },
           location: { type: 'string', enum: [...LOCATIONS] },
+          category: { type: 'string' },
         },
-        required: ['name', 'quantity', 'unit', 'location'],
+        required: ['name', 'quantity', 'unit', 'location', 'category'],
       },
     },
   },
@@ -38,6 +40,7 @@ const responseShape = z.object({
       quantity: z.number().finite().positive(),
       unit: z.enum(UNITS).catch('unit'),
       location: z.enum(LOCATIONS).catch('pantry'),
+      category: z.string().trim().max(60).nullish().catch(null).transform((c) => c || null),
     }),
   ),
 });
@@ -53,13 +56,13 @@ export class GeminiReceiptParser implements ReceiptParser {
     this.client = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
   }
 
-  async parse(image: Buffer, mimeType: string): Promise<ReceiptLine[]> {
+  async parse(image: Buffer, mimeType: string, categories: string[]): Promise<ParsedReceiptLine[]> {
     const response = await this.client.models.generateContent({
       model: this.model,
       contents: [
         {
           role: 'user',
-          parts: [{ inlineData: { mimeType, data: image.toString('base64') } }, { text: PROMPT }],
+          parts: [{ inlineData: { mimeType, data: image.toString('base64') } }, { text: `${PROMPT}\nCategories: ${JSON.stringify(categories)}` }],
         },
       ],
       config: { responseMimeType: 'application/json', responseJsonSchema: RESPONSE_SCHEMA, temperature: 0 },
@@ -69,7 +72,7 @@ export class GeminiReceiptParser implements ReceiptParser {
 }
 
 /** Validates the model output; malformed lines are dropped rather than trusted. */
-export function parseGeminiResponse(text: string | undefined): ReceiptLine[] {
+export function parseGeminiResponse(text: string | undefined): ParsedReceiptLine[] {
   const json: unknown = JSON.parse(text ?? '{"items":[]}');
   const items = Array.isArray((json as { items?: unknown })?.items) ? (json as { items: unknown[] }).items : [];
   return items.flatMap((item) => {
