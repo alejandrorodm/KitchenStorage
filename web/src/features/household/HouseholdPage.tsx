@@ -1,9 +1,13 @@
 import { RefreshCw, ShieldCheck } from 'lucide-react';
-import { useHousehold, useRegenerateHouseholdCode } from '../../api/hooks';
+import { useState, type FormEvent } from 'react';
+import { useHousehold, useRegenerateHouseholdCode, useUpdateHousehold } from '../../api/hooks';
+import type { Household } from '../../api/types';
 import { Button } from '../../components/atoms/Button';
+import { Field, NumberInput } from '../../components/atoms/Field';
 import { useToast } from '../../components/atoms/Toast';
 import { InviteCode } from '../../components/molecules/InviteCode';
 import { PageHeader } from '../../components/molecules/PageHeader';
+import { alertLabel } from '../../shared/labels';
 
 /** The signed-in user's household: its code to invite people and who is in it. */
 export function HouseholdPage() {
@@ -48,6 +52,8 @@ export function HouseholdPage() {
             )}
           </section>
 
+          <AlertSettings household={data} />
+
           <section className="panel" aria-labelledby="household-members">
             <div className="panel-head">
               <h2 id="household-members">Quién vive aquí</h2>
@@ -71,6 +77,45 @@ export function HouseholdPage() {
           </section>
         </>
       )}
+    </section>
+  );
+}
+
+/** When items are flagged as running low and added to the shopping list. */
+function AlertSettings({ household }: { household: Household }) {
+  const update = useUpdateHousehold();
+  const toast = useToast();
+  const [value, setValue] = useState(String(household.lowThreshold));
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const lowThreshold = Number(value);
+    update.mutate({ lowThreshold }, { onSuccess: () => toast(`Avisaremos ${alertLabel(lowThreshold)}`) });
+  };
+
+  return (
+    <section className="panel" aria-labelledby="household-alerts">
+      <div className="panel-head">
+        <h2 id="household-alerts">Avisos de «se está acabando»</h2>
+      </div>
+      <p className="muted">
+        Ahora se avisa {alertLabel(household.lowThreshold)}. Se aplica a los alimentos que no tienen su propio aviso y los añade a la lista de la compra.
+      </p>
+      <form className="form" onSubmit={submit}>
+        <Field label="Avisar cuando queden" hint="0 = solo cuando se acabe.">
+          <NumberInput value={value} onChange={(e) => setValue(e.target.value)} required />
+        </Field>
+        {update.error && (
+          <p className="error" role="alert">
+            {update.error.message}
+          </p>
+        )}
+        <div className="form-actions">
+          <Button variant="primary" type="submit" disabled={update.isPending || Number(value) === household.lowThreshold}>
+            Guardar
+          </Button>
+        </div>
+      </form>
     </section>
   );
 }

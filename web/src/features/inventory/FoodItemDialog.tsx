@@ -1,4 +1,4 @@
-import { useDeleteItem, useSaveItem } from '../../api/hooks';
+import { useDeleteItem, useHousehold, useSaveItem } from '../../api/hooks';
 import type { FoodItem, Location } from '../../api/types';
 import { Modal } from '../../components/atoms/Modal';
 import { useToast } from '../../components/atoms/Toast';
@@ -15,6 +15,7 @@ interface FoodItemDialogProps {
 export function FoodItemDialog({ item, defaultLocation = 'fridge', onClose }: FoodItemDialogProps) {
   const save = useSaveItem();
   const remove = useDeleteItem();
+  const householdThreshold = useHousehold().data?.lowThreshold ?? 0;
   const toast = useToast();
   const isNew = item === 'new';
 
@@ -22,6 +23,7 @@ export function FoodItemDialog({ item, defaultLocation = 'fridge', onClose }: Fo
     <Modal title={isNew ? 'Añadir alimento' : item.name} subtitle={isNew ? undefined : LOCATION_LABEL[item.location]} onClose={onClose}>
       <FoodItemForm
         item={isNew ? undefined : item}
+        householdThreshold={householdThreshold}
         defaultLocation={defaultLocation}
         busy={save.isPending || remove.isPending}
         error={save.error?.message ?? remove.error?.message}

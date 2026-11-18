@@ -121,6 +121,36 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE meals_v2 RENAME TO meals;
     `);
   },
+  // v3: the alert threshold is a household setting (default 0: alert when it runs out).
+  // An item's own threshold becomes optional (NULL follows the household), which needs a rebuild.
+  `
+    ALTER TABLE households ADD COLUMN low_threshold REAL NOT NULL DEFAULT 0 CHECK (low_threshold >= 0);
+    CREATE TABLE food_items_v3 (
+      id TEXT PRIMARY KEY,
+      household_id TEXT REFERENCES households(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      name_key TEXT NOT NULL,
+      location TEXT NOT NULL CHECK (location IN ('fridge', 'freezer', 'pantry')),
+      quantity REAL NOT NULL CHECK (quantity >= 0),
+      unit TEXT NOT NULL,
+      low_threshold REAL CHECK (low_threshold >= 0),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    -- Every existing item had the old default, so all of them now follow the household.
+    INSERT INTO food_items_v3 (id, household_id, name, name_key, location, quantity, unit, low_threshold, created_at, updated_at)
+      SELECT id, household_id, name, name_key, location, quantity, unit, NULL, created_at, updated_at FROM food_items;
+    DROP TABLE food_items;
+    ALTER TABLE food_items_v3 RENAME TO food_items;
+    CREATE INDEX food_items_lookup ON food_items (household_id, name_key, location, unit);
+    -- With the new threshold of 0, automatic entries for items that still have stock no longer apply.
+    DELETE FROM shopping_items WHERE source = 'auto' AND food_item_id IN (
+      SELECT f.id FROM food_items f
+      WHERE f.quantity - COALESCE((
+        SELECT SUM(a.quantity) FROM meal_allocations a JOIN meals m ON m.id = a.meal_id
+        WHERE a.food_item_id = f.id AND m.consumed = 0), 0) > 0
+    );
+  `,
 ];
 
 export function openDatabase(path: string): Db {

@@ -8,6 +8,8 @@ export interface HouseholdView {
   name: string;
   /** Code that adds whoever registers with it to this household. */
   inviteCode: string;
+  /** Items without their own threshold alert when what is left is at or under this. */
+  lowThreshold: number;
   members: { username: string; isAdmin: boolean }[];
 }
 
@@ -38,8 +40,8 @@ export class HouseholdService {
   ) {}
 
   view(householdId: string): HouseholdView {
-    const household = this.db.prepare('SELECT id, name, invite_code FROM households WHERE id = ?').get(householdId) as
-      | { id: string; name: string; invite_code: string }
+    const household = this.db.prepare('SELECT id, name, invite_code, low_threshold FROM households WHERE id = ?').get(householdId) as
+      | { id: string; name: string; invite_code: string; low_threshold: number }
       | undefined;
     if (!household) throw notFound('No se encontró tu casa');
     const members = this.db
@@ -49,6 +51,7 @@ export class HouseholdService {
       id: household.id,
       name: household.name,
       inviteCode: household.invite_code,
+      lowThreshold: household.low_threshold,
       members: members.map((m) => ({ username: m.username, isAdmin: m.is_admin === 1 })),
     };
   }
@@ -56,6 +59,11 @@ export class HouseholdService {
   /** Replaces the household code; the old one stops working at once. */
   regenerateCode(householdId: string): HouseholdView {
     this.db.prepare('UPDATE households SET invite_code = ? WHERE id = ?').run(this.uniqueCode(), householdId);
+    return this.view(householdId);
+  }
+
+  setLowThreshold(householdId: string, lowThreshold: number): HouseholdView {
+    this.db.prepare('UPDATE households SET low_threshold = ? WHERE id = ?').run(lowThreshold, householdId);
     return this.view(householdId);
   }
 

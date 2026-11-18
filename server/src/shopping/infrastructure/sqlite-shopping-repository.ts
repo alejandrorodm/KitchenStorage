@@ -17,11 +17,12 @@ interface Row {
 
 const SELECT = `
   SELECT s.id, COALESCE(f.name, s.name) AS name, s.quantity, COALESCE(f.unit, s.unit) AS unit,
-         s.food_item_id, s.source, s.checked, s.created_at, f.low_threshold,
+         s.food_item_id, s.source, s.checked, s.created_at,
+         CASE WHEN f.id IS NULL THEN NULL ELSE COALESCE(f.low_threshold, h.low_threshold, 0) END AS low_threshold,
          f.quantity - COALESCE((
            SELECT SUM(a.quantity) FROM meal_allocations a JOIN meals m ON m.id = a.meal_id
            WHERE a.food_item_id = f.id AND m.consumed = 0), 0) AS available
-  FROM shopping_items s LEFT JOIN food_items f ON f.id = s.food_item_id`;
+  FROM shopping_items s LEFT JOIN food_items f ON f.id = s.food_item_id LEFT JOIN households h ON h.id = f.household_id`;
 
 export class SqliteShoppingRepository implements ShoppingRepository {
   constructor(
