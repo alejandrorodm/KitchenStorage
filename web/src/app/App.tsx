@@ -1,7 +1,10 @@
-import { CalendarDays, LogOut, Refrigerator, ScanLine, ShoppingCart, Sun, type LucideIcon } from 'lucide-react';
+import { CalendarDays, House, LogOut, Refrigerator, ScanLine, ShieldCheck, ShoppingCart, Sun, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useItems, useLogout, useMe, useShopping } from '../api/hooks';
+import type { User } from '../api/types';
+import { AdminPage } from '../features/admin/AdminPage';
 import { LoginPage } from '../features/auth/LoginPage';
+import { HouseholdPage } from '../features/household/HouseholdPage';
 import { InventoryPage } from '../features/inventory/InventoryPage';
 import { PlannerPage } from '../features/planner/PlannerPage';
 import { ReceiptPage } from '../features/receipts/ReceiptPage';
@@ -16,6 +19,7 @@ interface NavItem {
   icon: LucideIcon;
   /** Shown in the phone tab bar; the rest are reached from inside the pages. */
   inTabBar: boolean;
+  adminOnly?: boolean;
 }
 
 const NAV: NavItem[] = [
@@ -24,6 +28,8 @@ const NAV: NavItem[] = [
   { id: 'planner', label: 'Menú', icon: CalendarDays, inTabBar: true },
   { id: 'shopping', label: 'Compra', icon: ShoppingCart, inTabBar: true },
   { id: 'receipt', label: 'Escanear ticket', icon: ScanLine, inTabBar: false },
+  { id: 'household', label: 'Mi casa', icon: House, inTabBar: false },
+  { id: 'admin', label: 'Administración', icon: ShieldCheck, inTabBar: false, adminOnly: true },
 ];
 
 export function App() {
@@ -32,11 +38,15 @@ export function App() {
 
   if (me.isPending) return <div className="splash" aria-label="Cargando" />;
   if (!me.data) return <LoginPage />;
-  return <Shell username={me.data.username} />;
+  return <Shell user={me.data} />;
 }
 
-function Shell({ username }: { username: string }) {
-  const [section, setSection] = useState<Section>(sectionFromHash);
+function Shell({ user }: { user: User }) {
+  const { username } = user;
+  const nav = NAV.filter((item) => !item.adminOnly || user.isAdmin);
+  const [requested, setSection] = useState<Section>(sectionFromHash);
+  // Someone who is not an admin never lands on the admin section, even from an old link.
+  const section = nav.some((item) => item.id === requested) ? requested : 'today';
   const logout = useLogout();
   const alerts = (useItems().data ?? []).filter((item) => item.status !== 'ok').length;
   const toBuy = (useShopping().data ?? []).filter((entry) => !entry.checked).length;
@@ -83,7 +93,7 @@ function Shell({ username }: { username: string }) {
           </div>
           <nav aria-label="Secciones">
             <ul className="side-nav">
-              {NAV.map(({ id, label, icon: Icon }) => (
+              {nav.map(({ id, label, icon: Icon }) => (
                 <li key={id}>
                   <button type="button" className={`side-link ${section === id ? 'side-link-active' : ''}`} aria-current={section === id ? 'page' : undefined} onClick={() => go(id)}>
                     <Icon aria-hidden size={20} />
@@ -98,7 +108,10 @@ function Shell({ username }: { username: string }) {
             <span className="avatar" aria-hidden>
               {username.charAt(0).toLocaleUpperCase('es')}
             </span>
-            <span className="sidebar-username">{username}</span>
+            <span className="sidebar-username">
+              {username}
+              <span className="sidebar-household">{user.householdName}</span>
+            </span>
             <button type="button" className="icon-btn" onClick={() => logout.mutate()} aria-label="Cerrar sesión" title="Cerrar sesión">
               <LogOut aria-hidden size={18} />
             </button>
@@ -106,11 +119,13 @@ function Shell({ username }: { username: string }) {
         </aside>
 
         <main className="content">
-          {section === 'today' && <TodayPage username={username} />}
+          {section === 'today' && <TodayPage username={username} isAdmin={user.isAdmin} />}
           {section === 'inventory' && <InventoryPage />}
           {section === 'planner' && <PlannerPage />}
           {section === 'shopping' && <ShoppingPage />}
           {section === 'receipt' && <ReceiptPage />}
+          {section === 'household' && <HouseholdPage />}
+          {section === 'admin' && <AdminPage />}
         </main>
 
         <nav className="tabbar" aria-label="Secciones">

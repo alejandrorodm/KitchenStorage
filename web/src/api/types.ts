@@ -12,6 +12,31 @@ export const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
 export interface User {
   id: string;
   username: string;
+  householdId: string;
+  householdName: string;
+  isAdmin: boolean;
+}
+
+export interface Household {
+  id: string;
+  name: string;
+  inviteCode: string;
+  members: { username: string; isAdmin: boolean }[];
+}
+
+/** Single-use code from an admin; registering with it creates a new household. */
+export interface Invite {
+  code: string;
+  createdAt: string;
+  usedBy: string | null;
+  usedAt: string | null;
+}
+
+export interface HouseholdSummary {
+  id: string;
+  name: string;
+  createdAt: string;
+  members: string[];
 }
 
 export interface FoodItem {
