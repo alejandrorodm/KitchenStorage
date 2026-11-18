@@ -1,17 +1,34 @@
-import { Plus, ScanLine, Search, SearchX, TriangleAlert } from 'lucide-react';
+import { Plus, ScanLine, Search, SearchX, Tags, TriangleAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useAdjustItem, useItems } from '../../api/hooks';
+import { useAdjustItem, useCategories, useItems } from '../../api/hooks';
 import { LOCATIONS, type FoodItem, type Location } from '../../api/types';
 import { useNavigate } from '../../app/navigation';
 import { Button } from '../../components/atoms/Button';
 import { EmptyState } from '../../components/atoms/EmptyState';
+import { Segmented } from '../../components/atoms/Segmented';
 import { FoodItemRow } from '../../components/molecules/FoodItemRow';
 import { PageHeader } from '../../components/molecules/PageHeader';
 import { LOCATION_ICON } from '../../shared/icons';
 import { LOCATION_LABEL } from '../../shared/labels';
+import { groupByCategory, UNCATEGORIZED } from '../../shared/categories';
+import { CategoriesDialog } from './CategoriesDialog';
 import { FoodItemDialog } from './FoodItemDialog';
 
 type Filter = Location | 'all';
+
+const VIEWS = ['location', 'category'] as const;
+type View = (typeof VIEWS)[number];
+const VIEW_LABEL: Record<View, string> = { location: 'Por lugar', category: 'Por sección' };
+const VIEW_KEY = 'inventory-view';
+
+/** The chosen grouping is remembered per device; storage may be unavailable. */
+function storedView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'category' ? 'category' : 'location';
+  } catch {
+    return 'location';
+  }
+}
 
 export function InventoryPage() {
   const navigate = useNavigate();
@@ -19,7 +36,18 @@ export function InventoryPage() {
   const adjust = useAdjustItem();
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
-  const [editing, setEditing] = useState<{ item: FoodItem | 'new'; location?: Location } | null>(null);
+  const [editing, setEditing] = useState<{ item: FoodItem | 'new'; location?: Location; categoryId?: string | null } | null>(null);
+  const [managing, setManaging] = useState(false);
+  const [view, setViewState] = useState<View>(storedView);
+  const categories = useCategories().data ?? [];
+  const setView = (next: View) => {
+    setViewState(next);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Only a convenience: the view simply resets next time.
+    }
+  };
 
   const all = useMemo(() => [...(items.data ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'es')), [items.data]);
   const alerts = all.filter((item) => item.status !== 'ok').length;
@@ -33,6 +61,9 @@ export function InventoryPage() {
         title="Alimentos"
         actions={
           <>
+            <Button icon={Tags} onClick={() => setManaging(true)}>
+              Secciones
+            </Button>
             <Button icon={ScanLine} onClick={() => navigate('receipt')} className="hide-narrow">
               Ticket
             </Button>
@@ -69,6 +100,7 @@ export function InventoryPage() {
             );
           })}
         </div>
+        <Segmented label="Agrupar alimentos" value={view} options={VIEWS} labels={VIEW_LABEL} onChange={setView} />
       </div>
 
       {items.isPending && <p className="muted">Cargando alimentos…</p>}
@@ -96,7 +128,37 @@ export function InventoryPage() {
         <EmptyState icon={SearchX} title={`No hay nada que se llame «${search.trim()}»`} />
       )}
 
-      {items.isSuccess && all.length > 0 && (
+      {items.isSuccess && all.length > 0 && view === 'category' && (
+        <div className="zones zones-categories">
+          {groupByCategory(
+            visible.filter((item) => filter === 'all' || item.location === filter),
+            categories,
+          ).map((group) => {
+            if (!group.items.length) return null;
+            const headingId = `category-${group.id || 'none'}`;
+            return (
+              <section key={group.id || 'none'} className="zone category-group" aria-labelledby={headingId}>
+                <h2 id={headingId} className="zone-title">
+                  {group.name}
+                  <span className="zone-count">{group.items.length}</span>
+                </h2>
+                <ul className="items">
+                  {group.items.map((item) => (
+                    <FoodItemRow key={item.id} item={item} showLocation busy={adjust.isPending} onEdit={() => setEditing({ item })} onAdjust={(delta) => adjust.mutate({ id: item.id, delta })} />
+                  ))}
+                </ul>
+                {group.id !== UNCATEGORIZED && (
+                  <button type="button" className="zone-empty" onClick={() => setEditing({ item: 'new', location: filter === 'all' ? undefined : filter, categoryId: group.id })}>
+                    <Plus aria-hidden size={16} /> Añadir a {group.name.toLocaleLowerCase('es')}
+                  </button>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {items.isSuccess && all.length > 0 && view === 'location' && (
         <div className={`zones ${filter === 'all' ? 'zones-all' : ''}`}>
           {zones.map((location) => {
             const group = visible.filter((item) => item.location === location);
@@ -128,7 +190,8 @@ export function InventoryPage() {
         </div>
       )}
 
-      {editing && <FoodItemDialog item={editing.item} defaultLocation={editing.location} onClose={() => setEditing(null)} />}
+      {editing && <FoodItemDialog item={editing.item} defaultLocation={editing.location} defaultCategoryId={editing.categoryId} onClose={() => setEditing(null)} />}
+      {managing && <CategoriesDialog onClose={() => setManaging(false)} />}
     </section>
   );
 }

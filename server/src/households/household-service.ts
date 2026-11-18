@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { Db } from '../shared/db.js';
+import { insertDefaultCategories } from '../categories/infrastructure/sqlite-category-repository.js';
+import { transaction, type Db } from '../shared/db.js';
 import { AppError, conflict, notFound } from '../shared/errors.js';
 import { generateInviteCode, normalizeInviteCode } from '../shared/invite-code.js';
 
@@ -69,9 +70,11 @@ export class HouseholdService {
 
   create(name: string): string {
     const id = randomUUID();
-    this.db
-      .prepare('INSERT INTO households (id, name, invite_code, created_at) VALUES (?, ?, ?, ?)')
-      .run(id, name, this.uniqueCode(), this.now().toISOString());
+    const createdAt = this.now().toISOString();
+    transaction(this.db, () => {
+      this.db.prepare('INSERT INTO households (id, name, invite_code, created_at) VALUES (?, ?, ?, ?)').run(id, name, this.uniqueCode(), createdAt);
+      insertDefaultCategories(this.db, id, createdAt);
+    });
     return id;
   }
 

@@ -6,6 +6,9 @@ import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { AuthService } from './auth/auth-service.js';
+import { CategoryService } from './categories/application/category-service.js';
+import { registerCategoryRoutes } from './categories/infrastructure/category-routes.js';
+import { SqliteCategoryRepository } from './categories/infrastructure/sqlite-category-repository.js';
 import { registerAuth, requireUser } from './auth/auth-routes.js';
 import { registerHouseholdRoutes } from './households/household-routes.js';
 import { HouseholdService } from './households/household-service.js';
@@ -90,6 +93,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerAuth(app, auth, { cookieSecure: options.cookieSecure });
   registerHouseholdRoutes(app, households, (request) => kitchenFor(request).inventory.alertSettingsChanged());
   registerInventoryRoutes(app, (request) => kitchenFor(request).inventory);
+  registerCategoryRoutes(app, (request) => kitchenFor(request).categories);
   registerMealPlanRoutes(app, (request) => kitchenFor(request).meals);
   registerShoppingRoutes(app, (request) => kitchenFor(request).shopping);
   registerPushRoutes(app, notifier);
@@ -131,6 +135,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 /** Composition root for one household: wires its adapters into the use cases. */
 function kitchen(db: Db, householdId: string, events: ChangeEvents, receiptParser: ReceiptParser | null, notifier: PushNotifier) {
   const foodItems = new SqliteFoodItemRepository(db, householdId);
+  const categories = new CategoryService(new SqliteCategoryRepository(db, householdId), () => events.publish(householdId, 'inventory'));
   // Clearing bought entries re-adds items that are still low; that is not news, so no push.
   const shopping = new ShoppingService(new SqliteShoppingRepository(db, householdId), () => {
     syncShopping();
@@ -142,14 +147,18 @@ function kitchen(db: Db, householdId: string, events: ChangeEvents, receiptParse
     const alerts = syncShopping().map(({ id, name, status }) => ({ id, name, status: status === 'out' ? ('out' as const) : ('low' as const) }));
     if (alerts.length > 0) void notifier.notifyStockAlerts(householdId, alerts);
   };
-  const inventory = new InventoryService(foodItems, () => {
-    syncAndNotify();
-    events.publish(householdId, 'inventory', 'shopping');
-  });
+  const inventory = new InventoryService(
+    foodItems,
+    () => {
+      syncAndNotify();
+      events.publish(householdId, 'inventory', 'shopping');
+    },
+    (id) => categories.exists(id),
+  );
   const meals = new MealPlanService(new SqliteMealPlanRepository(db, householdId), () => {
     syncAndNotify();
     events.publish(householdId, 'meals', 'inventory', 'shopping');
   });
   const receipts = new ReceiptService(receiptParser, inventory);
-  return { inventory, meals, shopping, receipts };
+  return { inventory, categories, meals, shopping, receipts };
 }

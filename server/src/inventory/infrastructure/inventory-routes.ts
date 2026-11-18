@@ -9,6 +9,7 @@ export const foodItemInput = z.object({
   quantity: z.number().finite().min(0).max(1_000_000),
   unit: z.enum(UNITS),
   lowThreshold: z.number().finite().min(0).max(1_000_000).nullable().optional(),
+  categoryId: z.string().min(1).max(64).nullable().optional(),
 });
 
 const idParam = z.object({ id: z.string().min(1) });

@@ -9,6 +9,7 @@ interface Row {
   quantity: number;
   unit: Unit;
   low_threshold: number | null;
+  category_id: string | null;
   household_threshold?: number;
   created_at: string;
   updated_at: string;
@@ -50,19 +51,19 @@ export class SqliteFoodItemRepository implements FoodItemRepository {
   insert(item: FoodItem): void {
     this.db
       .prepare(
-        `INSERT INTO food_items (id, household_id, name, name_key, location, quantity, unit, low_threshold, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO food_items (id, household_id, name, name_key, location, quantity, unit, low_threshold, category_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(item.id, this.householdId, item.name, normalizeName(item.name), item.location, item.quantity, item.unit, item.lowThreshold, item.createdAt, item.updatedAt);
+      .run(item.id, this.householdId, item.name, normalizeName(item.name), item.location, item.quantity, item.unit, item.lowThreshold, item.categoryId, item.createdAt, item.updatedAt);
   }
 
   update(item: FoodItem): void {
     this.db
       .prepare(
-        `UPDATE food_items SET name = ?, name_key = ?, location = ?, quantity = ?, unit = ?, low_threshold = ?, updated_at = ?
+        `UPDATE food_items SET name = ?, name_key = ?, location = ?, quantity = ?, unit = ?, low_threshold = ?, category_id = ?, updated_at = ?
          WHERE id = ? AND household_id = ?`,
       )
-      .run(item.name, normalizeName(item.name), item.location, item.quantity, item.unit, item.lowThreshold, item.updatedAt, item.id, this.householdId);
+      .run(item.name, normalizeName(item.name), item.location, item.quantity, item.unit, item.lowThreshold, item.categoryId, item.updatedAt, item.id, this.householdId);
   }
 
   delete(id: string): boolean {
@@ -82,6 +83,7 @@ function toEntity(row: Row): FoodItem {
     quantity: row.quantity,
     unit: row.unit,
     lowThreshold: row.low_threshold,
+    categoryId: row.category_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

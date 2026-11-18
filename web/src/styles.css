@@ -973,3 +973,17 @@ select.input { padding-right: 8px; }
 .admin-row-main .muted { overflow-wrap: anywhere; }
 .today-head-actions { grid-auto-flow: column; gap: 4px; }
 .sidebar-household { display: block; font-size: 0.8rem; font-weight: 500; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; }
+
+/* ------------------------------------------------------------------
+   Categories
+   ------------------------------------------------------------------ */
+.filters > .segmented { grid-column: 1 / -1; justify-self: start; }
+@media (min-width: 1000px) { .zones-categories { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; } }
+.item-place { font-weight: 600; color: var(--zone); }
+
+.category-add, .category-rename { display: flex; gap: 8px; align-items: center; }
+.category-add .input, .category-rename .input { flex: 1; min-width: 0; }
+.category-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.category-row { display: flex; align-items: center; gap: 8px; }
+.category-row .category-rename { flex: 1; min-width: 0; }
+.category-count { font-size: 0.85rem; white-space: nowrap; }

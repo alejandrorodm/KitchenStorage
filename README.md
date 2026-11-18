@@ -8,6 +8,7 @@ Household app to track what is in the **fridge, freezer and pantry**, plan **bre
 |------|--------------|
 | Today | Home screen with today's three meals, what is running out and what is left to buy. |
 | Inventory | Add, edit, delete and +/- items manually. Each item has a place, quantity, unit and either its own "warn me at" threshold or the household one. |
+| Categories | Every household starts with basic sections (Proteínas, Verduras, Frutas, Lácteos, Cereales y pasta, Legumbres, Bebidas, Salsas y condimentos, Dulces y snacks). Members can create, rename and delete them from **Secciones** in Alimentos; deleting one leaves its items without a section. The food list can be grouped by place or by section. |
 | Receipts | Take a photo of a receipt; Gemini reads the food lines, you review them, and they are added to stock (merged with items of the same name, place and unit). |
 | Planner | Week view (Mon–Sun × breakfast/lunch/dinner). Assign food from stock to each meal. |
 | Count | Planned food is subtracted from the **available** count right away. **Mark as eaten** takes it out of stock; **Undo** puts back exactly what was taken. |

@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { disablePush } from '../shared/push';
 import { api } from './client';
-import type { FoodItem, FoodItemInput, Household, HouseholdSummary, Invite, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
+import type { Category, FoodItem, FoodItemInput, Household, HouseholdSummary, Invite, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
 
 export const keys = {
   me: ['me'] as const,
   items: ['inventory', 'items'] as const,
+  categories: ['inventory', 'categories'] as const,
   meals: (from: string, to: string) => ['meals', from, to] as const,
   shopping: ['shopping'] as const,
   receiptStatus: ['receipts', 'status'] as const,
@@ -82,6 +83,24 @@ export function useDeleteItem() {
   return useMutation({
     mutationFn: (id: string) => api<void>('DELETE', `/api/items/${id}`),
     onSuccess: () => invalidate(),
+  });
+}
+
+// Categories (under the inventory topic, so live events refresh them too)
+
+export function useCategories() {
+  return useQuery({ queryKey: keys.categories, queryFn: () => api<Category[]>('GET', '/api/categories') });
+}
+
+export function useCategoryAction() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (action: { type: 'create'; name: string } | { type: 'rename'; id: string; name: string } | { type: 'delete'; id: string }) => {
+      if (action.type === 'create') return api<Category | void>('POST', '/api/categories', { name: action.name });
+      if (action.type === 'rename') return api<Category | void>('PATCH', `/api/categories/${action.id}`, { name: action.name });
+      return api<Category | void>('DELETE', `/api/categories/${action.id}`);
+    },
+    onSuccess: () => invalidate([['inventory']]),
   });
 }
 

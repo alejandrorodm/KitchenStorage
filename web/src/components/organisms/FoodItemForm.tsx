@@ -1,10 +1,10 @@
 import { Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { LOCATIONS, UNITS, type FoodItem, type FoodItemInput, type Location } from '../../api/types';
+import { LOCATIONS, UNITS, type Category, type FoodItem, type FoodItemInput, type Location } from '../../api/types';
 import { LOCATION_ICON } from '../../shared/icons';
 import { alertLabel, LOCATION_LABEL, UNIT_LABEL } from '../../shared/labels';
 import { Button } from '../atoms/Button';
-import { Field, NumberInput, TextInput } from '../atoms/Field';
+import { Field, NumberInput, Select, TextInput } from '../atoms/Field';
 import { Segmented } from '../atoms/Segmented';
 
 const ALERT_MODES = ['household', 'own'] as const;
@@ -16,14 +16,19 @@ interface FoodItemFormProps {
   /** The household's alert threshold, used while the item has no value of its own. */
   householdThreshold: number;
   defaultLocation: Location;
+  categories: Category[];
+  defaultCategoryId?: string | null;
   error?: string;
   busy?: boolean;
   onSubmit: (input: FoodItemInput) => void;
   onDelete?: () => void;
 }
 
-export function FoodItemForm({ item, householdThreshold, defaultLocation, error, busy, onSubmit, onDelete }: FoodItemFormProps) {
+export function FoodItemForm({ item, householdThreshold, defaultLocation, categories, defaultCategoryId, error, busy, onSubmit, onDelete }: FoodItemFormProps) {
+  const categoryOptions = ['', ...categories.map((c) => c.id)];
+  const categoryLabels: Record<string, string> = { '': 'Sin sección', ...Object.fromEntries(categories.map((c) => [c.id, c.name])) };
   const [form, setForm] = useState({
+    categoryId: item ? (item.categoryId ?? '') : (defaultCategoryId ?? ''),
     name: item?.name ?? '',
     location: item?.location ?? defaultLocation,
     quantity: String(item?.quantity ?? 1),
@@ -41,6 +46,7 @@ export function FoodItemForm({ item, householdThreshold, defaultLocation, error,
       quantity: Number(form.quantity),
       unit: form.unit,
       lowThreshold: form.alertMode === 'household' ? null : Number(form.lowThreshold),
+      categoryId: form.categoryId || null,
     });
   };
 
@@ -53,6 +59,9 @@ export function FoodItemForm({ item, householdThreshold, defaultLocation, error,
         <span className="field-label">Dónde lo guardas</span>
         <Segmented label="Dónde lo guardas" value={form.location} options={LOCATIONS} labels={LOCATION_LABEL} icons={LOCATION_ICON} zoned onChange={(v) => set('location', v)} />
       </div>
+      <Field label="Sección">
+        <Select value={categoryOptions.includes(form.categoryId) ? form.categoryId : ''} options={categoryOptions} labels={categoryLabels} onChange={(v) => set('categoryId', v)} />
+      </Field>
       <div className="form-row">
         <Field label="Cantidad">
           <NumberInput value={form.quantity} onChange={(e) => set('quantity', e.target.value)} required />
