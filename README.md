@@ -110,6 +110,6 @@ The script installs dependencies from `package-lock.json`, uploads into `/opt/ki
 
 ## Android app (APK)
 
-Every push runs the **Android APK** GitHub Actions workflow, which builds a signed APK and attaches it to the run as the artifact `kitchen-storage-apk-<run number>`. Download it from the run page under *Actions* and install it on the phone. Each build has a higher version code, so a newer APK installs over the previous one.
+Every push runs the **Android APK** GitHub Actions workflow, which builds a signed APK and attaches it to the run as the artifact `kitchen-storage-apk-<run number>`. Builds of `main` are also published under *Releases* (tag `apk-<run number>`); download the `.apk` from the latest release and install it on the phone. Each build has a higher version code, so a newer APK installs over the previous one.
 
 The app is a Trusted Web Activity: a thin Android shell that opens https://kitchen.alejandrorodm.com full screen. It always shows the live site, so ordinary releases only need `deploy/deploy.sh`; a new APK is needed only when the name, colours or icons change. Details, signing keys and local builds: [`deploy/android/README.md`](deploy/android/README.md).

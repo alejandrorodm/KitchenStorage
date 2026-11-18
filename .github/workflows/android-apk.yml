@@ -2,6 +2,7 @@ name: Android APK
 
 # Builds the signed Android app (a Trusted Web Activity that opens
 # https://kitchen.alejandrorodm.com) on every push and keeps it as a run artifact.
+# Builds of main are also published as a GitHub release (tag apk-<run number>).
 # See deploy/android/README.md.
 on:
   push:
@@ -81,3 +82,29 @@ jobs:
           path: ${{ runner.temp }}/out/*.apk
           if-no-files-found: error
           retention-days: 30
+
+  # Separate job so only this step, which holds no signing secrets, can write to the repo.
+  release:
+    if: github.ref == 'refs/heads/main'
+    needs: apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: kitchen-storage-apk-${{ github.run_number }}
+          path: apk
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: apk-${{ github.run_number }}
+        run: |
+          gh release create "$TAG" apk/*.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Kitchen Storage (build ${{ github.run_number }})" \
+            --notes "Signed Android APK built from ${GITHUB_SHA::7}. Download the .apk and open it on the phone; it installs over any previous build." \
+            --latest
