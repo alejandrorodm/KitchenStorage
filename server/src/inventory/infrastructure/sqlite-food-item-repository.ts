@@ -8,7 +8,8 @@ interface Row {
   location: Location;
   quantity: number;
   unit: Unit;
-  low_threshold: number;
+  low_threshold: number | null;
+  household_threshold?: number;
   created_at: string;
   updated_at: string;
   planned?: number;
@@ -19,8 +20,9 @@ const SELECT_WITH_PLANNED = `
     SELECT SUM(a.quantity) FROM meal_allocations a
     JOIN meals m ON m.id = a.meal_id
     WHERE a.food_item_id = f.id AND m.consumed = 0
-  ), 0) AS planned
-  FROM food_items f`;
+  ), 0) AS planned,
+  COALESCE(h.low_threshold, 0) AS household_threshold
+  FROM food_items f LEFT JOIN households h ON h.id = f.household_id`;
 
 export class SqliteFoodItemRepository implements FoodItemRepository {
   constructor(
@@ -86,5 +88,5 @@ function toEntity(row: Row): FoodItem {
 }
 
 function toViewRow(row: Row): FoodItemView {
-  return toView(toEntity(row), row.planned ?? 0);
+  return toView(toEntity(row), row.planned ?? 0, row.household_threshold ?? 0);
 }

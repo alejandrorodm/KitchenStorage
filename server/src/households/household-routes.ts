@@ -5,9 +5,24 @@ import type { User } from '../auth/auth-service.js';
 import { AppError } from '../shared/errors.js';
 import type { HouseholdService } from './household-service.js';
 
-export function registerHouseholdRoutes(app: FastifyInstance, households: HouseholdService) {
+const householdSettings = z.object({ lowThreshold: z.number().finite().min(0).max(1_000_000) });
+
+/** `alertSettingsChanged` re-evaluates the household's alerts and shopping list. */
+export function registerHouseholdRoutes(
+  app: FastifyInstance,
+  households: HouseholdService,
+  alertSettingsChanged: (request: FastifyRequest) => void,
+) {
   // The signed-in user's own household.
   app.get('/api/household', async (request) => households.view(requireUser(request).householdId));
+
+  app.patch('/api/household', async (request) => {
+    const { householdId } = requireUser(request);
+    const { lowThreshold } = householdSettings.parse(request.body);
+    const view = households.setLowThreshold(householdId, lowThreshold);
+    alertSettingsChanged(request);
+    return view;
+  });
 
   app.post('/api/household/invite-code', async (request) => households.regenerateCode(requireUser(request).householdId));
 

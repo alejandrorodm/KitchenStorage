@@ -2,13 +2,19 @@ import { Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { LOCATIONS, UNITS, type FoodItem, type FoodItemInput, type Location } from '../../api/types';
 import { LOCATION_ICON } from '../../shared/icons';
-import { LOCATION_LABEL, UNIT_LABEL } from '../../shared/labels';
+import { alertLabel, LOCATION_LABEL, UNIT_LABEL } from '../../shared/labels';
 import { Button } from '../atoms/Button';
 import { Field, NumberInput, TextInput } from '../atoms/Field';
 import { Segmented } from '../atoms/Segmented';
 
+const ALERT_MODES = ['household', 'own'] as const;
+type AlertMode = (typeof ALERT_MODES)[number];
+const ALERT_MODE_LABEL: Record<AlertMode, string> = { household: 'Como la casa', own: 'Personalizado' };
+
 interface FoodItemFormProps {
   item?: FoodItem;
+  /** The household's alert threshold, used while the item has no value of its own. */
+  householdThreshold: number;
   defaultLocation: Location;
   error?: string;
   busy?: boolean;
@@ -16,13 +22,14 @@ interface FoodItemFormProps {
   onDelete?: () => void;
 }
 
-export function FoodItemForm({ item, defaultLocation, error, busy, onSubmit, onDelete }: FoodItemFormProps) {
+export function FoodItemForm({ item, householdThreshold, defaultLocation, error, busy, onSubmit, onDelete }: FoodItemFormProps) {
   const [form, setForm] = useState({
     name: item?.name ?? '',
     location: item?.location ?? defaultLocation,
     quantity: String(item?.quantity ?? 1),
     unit: item?.unit ?? 'unit',
-    lowThreshold: String(item?.lowThreshold ?? 1),
+    alertMode: (item?.lowThreshold == null ? 'household' : 'own') as AlertMode,
+    lowThreshold: String(item?.lowThreshold ?? householdThreshold),
   });
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -33,7 +40,7 @@ export function FoodItemForm({ item, defaultLocation, error, busy, onSubmit, onD
       location: form.location,
       quantity: Number(form.quantity),
       unit: form.unit,
-      lowThreshold: Number(form.lowThreshold),
+      lowThreshold: form.alertMode === 'household' ? null : Number(form.lowThreshold),
     });
   };
 
@@ -55,9 +62,18 @@ export function FoodItemForm({ item, defaultLocation, error, busy, onSubmit, onD
           <Segmented label="Unidad" value={form.unit} options={UNITS} labels={UNIT_LABEL} onChange={(v) => set('unit', v)} />
         </div>
       </div>
-      <Field label="Avisarme cuando queden" hint="Al llegar a esta cantidad se marca como «se está acabando» y se añade a la compra.">
-        <NumberInput value={form.lowThreshold} onChange={(e) => set('lowThreshold', e.target.value)} required />
-      </Field>
+      <div className="field">
+        <span className="field-label">Avisarme</span>
+        <Segmented label="Avisarme" value={form.alertMode} options={ALERT_MODES} labels={ALERT_MODE_LABEL} onChange={(v) => set('alertMode', v)} />
+        {form.alertMode === 'household' && (
+          <span className="field-hint">Se avisa {alertLabel(householdThreshold, form.unit)}, como el resto de tu casa. Lo cambias en Mi casa.</span>
+        )}
+      </div>
+      {form.alertMode === 'own' && (
+        <Field label="Avisarme cuando queden" hint="Al llegar a esta cantidad se marca como «se está acabando» y se añade a la compra. 0 = al acabarse.">
+          <NumberInput value={form.lowThreshold} onChange={(e) => set('lowThreshold', e.target.value)} required />
+        </Field>
+      )}
       {error && (
         <p className="error" role="alert">
           {error}

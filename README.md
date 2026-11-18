@@ -7,11 +7,11 @@ Household app to track what is in the **fridge, freezer and pantry**, plan **bre
 | Area | What it does |
 |------|--------------|
 | Today | Home screen with today's three meals, what is running out and what is left to buy. |
-| Inventory | Add, edit, delete and +/- items manually. Each item has a place, quantity, unit and a "warn me at" threshold. |
+| Inventory | Add, edit, delete and +/- items manually. Each item has a place, quantity, unit and either its own "warn me at" threshold or the household one. |
 | Receipts | Take a photo of a receipt; Gemini reads the food lines, you review them, and they are added to stock (merged with items of the same name, place and unit). |
 | Planner | Week view (Mon–Sun × breakfast/lunch/dinner). Assign food from stock to each meal. |
 | Count | Planned food is subtracted from the **available** count right away. **Mark as eaten** takes it out of stock; **Undo** puts back exactly what was taken. |
-| Alerts | An item is *running low* when available ≤ threshold and *out of stock* when available ≤ 0. Shown on the Today screen and as a badge on the Food (Alimentos) section. |
+| Alerts | An item is *running low* when available ≤ threshold and *out of stock* when available ≤ 0. The threshold is a household setting in *Mi casa* (default 0: alert only when it runs out); an item can override it. Shown on the Today screen and as a badge on the Food (Alimentos) section. |
 | Shopping list | Low/out items are added automatically and removed once restocked. Manual entries can be added, checked and cleared. |
 | Households | Each household has its own food, menu and shopping list. Registration needs a code: a household's own code (shown in **Mi casa**) joins that household; a single-use code from an admin creates a new household. |
 | Admin | Admins get an **Admin** section to generate and revoke single-use codes and see every household. |

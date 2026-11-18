@@ -82,7 +82,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.get('/api/health', async () => ({ ok: true }));
   app.get('/.well-known/assetlinks.json', async () => ASSET_LINKS);
   registerAuth(app, auth, { cookieSecure: options.cookieSecure });
-  registerHouseholdRoutes(app, households);
+  registerHouseholdRoutes(app, households, (request) => kitchenFor(request).inventory.alertSettingsChanged());
   registerInventoryRoutes(app, (request) => kitchenFor(request).inventory);
   registerMealPlanRoutes(app, (request) => kitchenFor(request).meals);
   registerShoppingRoutes(app, (request) => kitchenFor(request).shopping);

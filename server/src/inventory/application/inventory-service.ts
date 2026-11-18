@@ -24,7 +24,8 @@ export interface NewFoodItem {
   location: Location;
   quantity: number;
   unit: Unit;
-  lowThreshold?: number;
+  /** Omitted or null: follow the household setting. */
+  lowThreshold?: number | null;
 }
 
 export type FoodItemChanges = Partial<NewFoodItem>;
@@ -33,8 +34,6 @@ export interface StockAddition {
   item: FoodItemView;
   merged: boolean;
 }
-
-export const DEFAULT_LOW_THRESHOLD = 1;
 
 export class InventoryService {
   constructor(
@@ -55,7 +54,7 @@ export class InventoryService {
       location: input.location,
       quantity: roundQuantity(input.quantity),
       unit: input.unit,
-      lowThreshold: input.lowThreshold ?? DEFAULT_LOW_THRESHOLD,
+      lowThreshold: input.lowThreshold ?? null,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -84,6 +83,11 @@ export class InventoryService {
     return this.update(id, { quantity: Math.max(0, roundQuantity(current.quantity + delta)) });
   }
 
+  /** Re-evaluates alerts after the household threshold changed. */
+  alertSettingsChanged(): void {
+    this.afterStockChange();
+  }
+
   delete(id: string): void {
     if (!this.items.delete(id)) throw notFound('No se encontró el alimento');
     this.afterStockChange();
@@ -106,7 +110,7 @@ export class InventoryService {
             location: line.location,
             quantity: roundQuantity(line.quantity),
             unit: line.unit,
-            lowThreshold: line.lowThreshold ?? DEFAULT_LOW_THRESHOLD,
+            lowThreshold: line.lowThreshold ?? null,
             createdAt: timestamp,
             updatedAt: timestamp,
           };

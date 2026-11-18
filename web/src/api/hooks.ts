@@ -164,6 +164,19 @@ export function useHousehold() {
   return useQuery({ queryKey: keys.household, queryFn: () => api<Household>('GET', '/api/household') });
 }
 
+/** Changing the alert threshold re-evaluates stock alerts and the shopping list. */
+export function useUpdateHousehold() {
+  const client = useQueryClient();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (settings: { lowThreshold: number }) => api<Household>('PATCH', '/api/household', settings),
+    onSuccess: (household) => {
+      client.setQueryData(keys.household, household);
+      return invalidate();
+    },
+  });
+}
+
 export function useRegenerateHouseholdCode() {
   const client = useQueryClient();
   return useMutation({

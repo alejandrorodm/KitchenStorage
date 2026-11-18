@@ -43,3 +43,10 @@ export function formatQuantity(quantity: number, unit: Unit | null): string {
   const value = Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString('es-ES', { maximumFractionDigits: 3 });
   return unit ? `${value} ${UNIT_LABEL[unit]}` : value;
 }
+
+/** When an item is flagged as running low: "al acabarse", "cuando queden 2 kg". */
+export function alertLabel(threshold: number, unit?: Unit): string {
+  if (threshold <= 0) return 'al acabarse';
+  const amount = threshold.toLocaleString('es');
+  return `cuando queden ${unit ? `${amount} ${UNIT_LABEL[unit]}` : amount}`;
+}

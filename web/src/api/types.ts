@@ -21,6 +21,8 @@ export interface Household {
   id: string;
   name: string;
   inviteCode: string;
+  /** Items without their own value alert when what is left is at or under this (0: when it runs out). */
+  lowThreshold: number;
   members: { username: string; isAdmin: boolean }[];
 }
 
@@ -45,9 +47,12 @@ export interface FoodItem {
   location: Location;
   quantity: number;
   unit: Unit;
-  lowThreshold: number;
+  /** The item's own alert threshold; null follows the household setting. */
+  lowThreshold: number | null;
   planned: number;
   available: number;
+  /** The threshold in effect (its own or the household's). */
+  alertAt: number;
   status: StockStatus;
   createdAt: string;
   updatedAt: string;
@@ -58,7 +63,7 @@ export interface FoodItemInput {
   location: Location;
   quantity: number;
   unit: Unit;
-  lowThreshold?: number;
+  lowThreshold?: number | null;
 }
 
 export interface Allocation {

@@ -12,7 +12,8 @@ export interface FoodItem {
   location: Location;
   quantity: number;
   unit: Unit;
-  lowThreshold: number;
+  /** The item's own alert threshold; null follows the household setting. */
+  lowThreshold: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,6 +22,8 @@ export interface FoodItem {
 export interface FoodItemView extends FoodItem {
   planned: number;
   available: number;
+  /** The threshold in effect: the item's own, or the household's. */
+  alertAt: number;
   status: StockStatus;
 }
 
@@ -49,7 +52,8 @@ export function roundQuantity(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
-export function toView(item: FoodItem, planned: number): FoodItemView {
+export function toView(item: FoodItem, planned: number, householdThreshold: number): FoodItemView {
   const available = roundQuantity(item.quantity - planned);
-  return { ...item, planned: roundQuantity(planned), available, status: stockStatus(available, item.lowThreshold) };
+  const alertAt = item.lowThreshold ?? householdThreshold;
+  return { ...item, planned: roundQuantity(planned), available, alertAt, status: stockStatus(available, alertAt) };
 }
