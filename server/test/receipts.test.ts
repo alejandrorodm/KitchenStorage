@@ -119,6 +119,25 @@ describe('GeminiReceiptParser', () => {
     expect(bodies[0]).toContain('Categories: [\\"Lácteos\\",\\"Frutas\\"]');
     expect(lines).toEqual([{ name: 'Leche', quantity: 6, unit: 'l', location: 'pantry', category: 'Lácteos' }]);
   });
+
+  it('retries an overloaded Gemini and falls back to the second model', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', async (input: string | URL | Request) => {
+      urls.push(input instanceof Request ? input.url : String(input));
+      if (urls.length <= 3) {
+        return new Response(JSON.stringify({ error: { code: 503, message: 'high demand', status: 'UNAVAILABLE' } }), { status: 503, headers: { 'content-type': 'application/json' } });
+      }
+      const text = JSON.stringify({ items: [{ name: 'Leche', quantity: 1, unit: 'l', location: 'fridge' }] });
+      return new Response(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text }] } }] }), { headers: { 'content-type': 'application/json' } });
+    });
+
+    const parser = new GeminiReceiptParser('test-key', 'gemini-2.5-flash', { fallbackModel: 'gemini-2.5-flash-lite', sleep: async () => {} });
+    const lines = await parser.parse(Buffer.from([0xff, 0xd8]), 'image/jpeg', []);
+
+    expect(lines).toEqual([{ name: 'Leche', quantity: 1, unit: 'l', location: 'fridge', category: null }]);
+    expect(urls.slice(0, 3).every((url) => url.includes('/models/gemini-2.5-flash:'))).toBe(true);
+    expect(urls[3]).toContain('/models/gemini-2.5-flash-lite:');
+  });
 });
 
 describe('AppError', () => {

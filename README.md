@@ -41,7 +41,8 @@ Environment variables (put them in a `.env` file at the repository root):
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | no | Free key from <https://aistudio.google.com/apikey>. Without it, receipt reading and the AI helpers (classifying, dish ideas) are disabled. |
-| `GEMINI_MODEL` | no | Defaults to `gemini-flash-latest`. |
+| `GEMINI_MODEL` | no | Defaults to `gemini-flash-latest`. When Gemini is overloaded, each AI request is retried up to 3 times. |
+| `GEMINI_FALLBACK_MODEL` | no | Model tried, also up to 3 times, when `GEMINI_MODEL` stays overloaded. Defaults to `gemini-2.5-flash-lite`; set it empty to turn the fallback off. |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | no | Web Push keys; generate once with `npx web-push generate-vapid-keys`. Without them, push notifications are disabled. Changing them invalidates every device's subscription. |
 | `VAPID_SUBJECT` | no | Contact for push services (`mailto:` or `https:` URL). Defaults to `https://kitchen.alejandrorodm.com`. |
 | `DOMAIN` | compose | Public domain pointing at the VPS; Caddy gets the HTTPS certificate for it. |
