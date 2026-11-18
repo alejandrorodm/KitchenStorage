@@ -6,6 +6,7 @@ import { ApiError } from './api/client';
 import { keys } from './api/hooks';
 import { App } from './app/App';
 import { ToastProvider } from './components/atoms/Toast';
+import { applyWhenIdle } from './shared/app-update';
 import '@fontsource-variable/figtree';
 import '@fontsource-variable/bricolage-grotesque';
 import './styles.css';
@@ -26,7 +27,19 @@ const queryClient = new QueryClient({
   },
 });
 
-registerSW({ immediate: true });
+// Time after an action ends during which its confirmation message is still on screen.
+const QUIET_MS = 4000;
+let lastActivity = 0;
+queryClient.getMutationCache().subscribe(() => {
+  lastActivity = Date.now();
+});
+const busy = () => queryClient.isMutating() > 0 || Date.now() - lastActivity < QUIET_MS;
+
+// A new version found in the background installs itself, but only reloads the page once the app is idle.
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh: () => applyWhenIdle(() => void updateSW(true), busy),
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
