@@ -19,7 +19,7 @@ Branch: `feat/households` · Delivery: ask-on-risk · Test runner: Vitest (`npm 
 | T1 | S1, S7 | inline | done | 88da6e4 — RED: 24 failing (module missing) → GREEN 45 server tests |
 | T2 | S2, S3, S5, S6 | inline | done | 88da6e4 (with T1: shared auth/household code) — CLI checked on scratch DB |
 | T3 | S2, S3, S4 | inline | done | 1979311 — web typecheck, 7 tests, build; local smoke (admin → invite → register → households) |
-| T4 | S5 (deploy + account) | inline | pending | |
+| T4 | S5 (deploy + account) | inline | done | deployed 5564d47; admin Alex created on VPS; prod login/household/admin API verified |
 
 Route evidence: no Writer trigger (units depend on each other); parent writes inline. Risk: items 1 (data migration) and 2 (auth, tenant isolation) → independent verifier at feature end.
 
@@ -31,3 +31,4 @@ Route evidence: no Writer trigger (units depend on each other); parent writes in
 - L4: T1–T3 done. Native assess over 7dd657a..HEAD: risk high (auth hot path + item 1 escalation), review_due. Independent verifier launched before native review.
 - L5: Independent verifier: no blockers, S1–S7 PASS (migration byte-identical, isolation probes 404, invite race 201/403). Advisories kept as follow-ups: meal_allocations statements filter by meal id only (safe while ids are server-checked); household_id columns nullable on altered tables; code generation outside a transaction (UNIQUE backstop).
 - L6 (2026-11-18): user: "cuando acabe, despliégalo y crea mi cuenta". Next — native review, DB backup, deploy from branch, create admin on VPS.
+- L7: Native review (risk, reliability) approved and acknowledged. Prod DB was empty (v1, 0 rows); backup in /opt/kitchenstorage/backups. Deployed 5564d47 from feat/households; Alex created in "Casa de Alex". Push/PR/merge left to the user.
