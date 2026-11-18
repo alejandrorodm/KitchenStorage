@@ -13,9 +13,9 @@ Branch: `feat/dishes-library` · Delivery: single-pr (as in previous features; f
 
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
-| T1 | S1 | inline | pending | |
-| T2 | S3, S4 | inline | pending | |
-| T3 | S1, S2, S3 | inline | pending | |
+| T1 | S1 | inline | done | e9a6f8c — RED: dishes.test.ts 7 failing → GREEN 99 server; migration v6; assess medium, under_budget |
+| T2 | S3, S4 | inline | done | 21acb6c — RED: 8 assistant tests + recipes.test.ts → GREEN 108 server; live probe of TheMealDB returned 5 recipes (e.g. Spanish Tortilla); assess medium, under_budget |
+| T3 | S1, S2, S3 | inline | done | 5af65ee — RED: suggestionToDish/splitLines missing → GREEN 17 web; tsc + build OK; no browser check (Chrome extension unavailable) |
 
 Route evidence: one developer, dependent units (T3's web builds on T1/T2's APIs), no Writer trigger reason. Risk: T1 adds migration v6 (item 1, additive table only).
 
@@ -24,3 +24,4 @@ Route evidence: one developer, dependent units (T3's web builds on T1/T2's APIs)
 - **L1** (2026-11-18) user: "además añade una sección de platos, para poder añadir yo los que quiera, y cuando pregunte a la IA todas las opciones tendrán un botón + para poder añadir estas comidas. además conecta a la IA de sugerencias de platos a bases de datos de cocina culinaria para dar ideas frescas (teniendo en cuenta que mínimo hay que dar unos cuantos que cumplan con todos o gran parte de los ingredientes que se tienen)"
 - **L2** user chose "TheMealDB (Recommended)" as the recipe database. Probe: `filter.php?i=chicken_breast` and `lookup.php?i=52772` answer JSON with key `1`.
 - **L3** UI plan: the existing "Ideas" tab becomes "Platos" with My dishes and the AI ideas (no 6th tab).
+- **L4** T1–T3 done; independent verifier launched for the whole feature (migration v6 is item 1).
