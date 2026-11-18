@@ -215,3 +215,37 @@ describe('WebPushSender', () => {
     }
   });
 });
+
+describe('PushNotifier', () => {
+  it('never rejects, even when the subscriptions cannot be read', async () => {
+    const { PushNotifier } = await import('../src/notifications/application/push-notifier.js');
+    const errors: string[] = [];
+    const broken = {
+      save() {},
+      delete() {},
+      forget() {},
+      forHousehold(): never {
+        throw new Error('database is locked');
+      },
+    };
+    const notifier = new PushNotifier(broken, fakeSender().sender, { error: (_details, message) => errors.push(message) });
+    await expect(notifier.notifyStockAlerts('h', [{ id: '1', name: 'Leche', status: 'out' }])).resolves.toBeUndefined();
+    expect(errors).toEqual(['push notifications could not be prepared']);
+  });
+
+  it('counts a re-subscribed device as recent when trimming old ones', async () => {
+    const push = fakeSender();
+    app = await createTestApp(undefined, { pushSender: push.sender });
+    const ana = await signedIn(app, 'ana');
+    for (let n = 1; n <= 10; n++) await ana({ method: 'POST', url: '/api/push/subscriptions', payload: subscription(`d${n}`) });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await ana({ method: 'POST', url: '/api/push/subscriptions', payload: subscription('d1') });
+    await ana({ method: 'POST', url: '/api/push/subscriptions', payload: subscription('d11') });
+    const milk = (await ana({ method: 'POST', url: '/api/items', payload: item('Leche') })).json();
+    await ana({ method: 'POST', url: `/api/items/${milk.id}/adjust`, payload: { delta: -1 } });
+    await vi.waitFor(() => expect(push.sent).toHaveLength(10));
+    const reached = push.sent.map((s) => s.endpoint);
+    expect(reached).toContain(endpoint('d1'));
+    expect(reached).not.toContain(endpoint('d2'));
+  });
+});

@@ -53,6 +53,15 @@ export class PushNotifier {
    * a restock. Never throws: a failed push must not fail the stock change.
    */
   async notifyStockAlerts(householdId: string, alerts: StockAlert[]): Promise<void> {
+    try {
+      await this.deliver(householdId, alerts);
+    } catch (error) {
+      // Runs in the background after the response: an escaped rejection would crash the process.
+      this.log.error({ message: (error as Error).message }, 'push notifications could not be prepared');
+    }
+  }
+
+  private async deliver(householdId: string, alerts: StockAlert[]): Promise<void> {
     const sender = this.sender;
     if (!sender || alerts.length === 0) return;
     // Re-checked at send time too, so a row stored before a rule change can never reach another host.

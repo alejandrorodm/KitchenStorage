@@ -16,7 +16,7 @@ export class SqlitePushSubscriptionRepository implements PushSubscriptionReposit
       .prepare(
         `INSERT INTO push_subscriptions (endpoint, user_id, household_id, p256dh, auth, created_at) VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT (endpoint) DO UPDATE SET user_id = excluded.user_id, household_id = excluded.household_id,
-           p256dh = excluded.p256dh, auth = excluded.auth`,
+           p256dh = excluded.p256dh, auth = excluded.auth, created_at = excluded.created_at`,
       )
       .run(target.endpoint, userId, householdId, target.p256dh, target.auth, this.now().toISOString());
     this.db
