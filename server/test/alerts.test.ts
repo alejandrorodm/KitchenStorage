@@ -71,7 +71,7 @@ describe('household alert threshold', () => {
     expect((await ana({ method: 'GET', url: '/api/shopping' })).json()).toEqual([]);
   });
 
-  it('migrates existing items to follow the household (0) and drops automatic entries that no longer apply', () => {
+  it('migrates default thresholds to follow the household (0), keeps custom ones, and drops automatic entries that no longer apply', () => {
     const db = new DatabaseSync(':memory:');
     db.exec('PRAGMA foreign_keys = ON');
     db.exec(MIGRATIONS[0] as string);
@@ -80,11 +80,14 @@ describe('household alert threshold', () => {
       INSERT INTO users VALUES ('u1', 'old', 'scrypt:x:y', '2026-01-01');
       INSERT INTO food_items VALUES ('f1', 'Leche', 'leche', 'fridge', 1, 'l', 1, '2026-01-01', '2026-01-01');
       INSERT INTO food_items VALUES ('f2', 'Arroz', 'arroz', 'pantry', 0, 'kg', 1, '2026-01-01', '2026-01-01');
+      INSERT INTO food_items VALUES ('f3', 'Huevos', 'huevos', 'fridge', 2, 'unit', 3, '2026-01-01', '2026-01-01');
+      INSERT INTO food_items VALUES ('f4', 'Sal', 'sal', 'pantry', 1, 'kg', 0, '2026-01-01', '2026-01-01');
       INSERT INTO meals VALUES ('m1', '2026-01-02', 'lunch', 'Café', 0);
       INSERT INTO meal_allocations VALUES ('a1', 'm1', 'f1', 0.5, 0);
       INSERT INTO shopping_items VALUES ('s1', 'Leche', NULL, 'l', 'f1', 'auto', 0, '2026-01-01');
       INSERT INTO shopping_items VALUES ('s2', 'Arroz', NULL, 'kg', 'f2', 'auto', 0, '2026-01-01');
       INSERT INTO shopping_items VALUES ('s3', 'Pan', NULL, NULL, NULL, 'manual', 0, '2026-01-01');
+      INSERT INTO shopping_items VALUES ('s4', 'Huevos', NULL, 'unit', 'f3', 'auto', 0, '2026-01-01');
     `);
 
     migrate(db);
@@ -93,8 +96,11 @@ describe('household alert threshold', () => {
     expect(db.prepare('SELECT id, quantity, low_threshold AS t FROM food_items ORDER BY id').all()).toEqual([
       { id: 'f1', quantity: 1, t: null },
       { id: 'f2', quantity: 0, t: null },
+      { id: 'f3', quantity: 2, t: 3 },
+      { id: 'f4', quantity: 1, t: 0 },
     ]);
-    expect(db.prepare('SELECT id FROM shopping_items ORDER BY id').all()).toEqual([{ id: 's2' }, { id: 's3' }]);
+    // s1: Leche has stock again under 0 → dropped; s4: Huevos still under its own 3 → kept.
+    expect(db.prepare('SELECT id FROM shopping_items ORDER BY id').all()).toEqual([{ id: 's2' }, { id: 's3' }, { id: 's4' }]);
     expect(db.prepare('SELECT COUNT(*) AS n FROM meal_allocations').get()).toEqual({ n: 1 });
     expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
     expect(() => db.exec("UPDATE food_items SET low_threshold = -1 WHERE id = 'f1'")).toThrow();

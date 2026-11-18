@@ -137,18 +137,20 @@ export const MIGRATIONS: Migration[] = [
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
-    -- Every existing item had the old default, so all of them now follow the household.
+    -- Items left at the old default (1) now follow the household; values chosen by hand are kept.
     INSERT INTO food_items_v3 (id, household_id, name, name_key, location, quantity, unit, low_threshold, created_at, updated_at)
-      SELECT id, household_id, name, name_key, location, quantity, unit, NULL, created_at, updated_at FROM food_items;
+      SELECT id, household_id, name, name_key, location, quantity, unit,
+             CASE WHEN low_threshold = 1 THEN NULL ELSE low_threshold END, created_at, updated_at
+      FROM food_items;
     DROP TABLE food_items;
     ALTER TABLE food_items_v3 RENAME TO food_items;
     CREATE INDEX food_items_lookup ON food_items (household_id, name_key, location, unit);
-    -- With the new threshold of 0, automatic entries for items that still have stock no longer apply.
+    -- Automatic entries for items now above their threshold (the household's is 0) no longer apply.
     DELETE FROM shopping_items WHERE source = 'auto' AND food_item_id IN (
       SELECT f.id FROM food_items f
       WHERE f.quantity - COALESCE((
         SELECT SUM(a.quantity) FROM meal_allocations a JOIN meals m ON m.id = a.meal_id
-        WHERE a.food_item_id = f.id AND m.consumed = 0), 0) > 0
+        WHERE a.food_item_id = f.id AND m.consumed = 0), 0) > COALESCE(f.low_threshold, 0)
     );
   `,
 ];
