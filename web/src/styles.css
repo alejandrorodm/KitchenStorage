@@ -140,7 +140,7 @@ svg { flex-shrink: 0; }
   inset: auto 0 0 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   height: calc(var(--tabbar-h) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -991,3 +991,15 @@ select.input { padding-right: 8px; }
 .notice-ai { background: var(--surface-2); color: var(--ink-2); flex-wrap: wrap; align-items: center; }
 .notice-ai > span { flex: 1; min-width: 180px; }
 .notice-ai .btn svg { margin-top: 0; }
+
+/* ------------------------------------------------------------------
+   Dish ideas
+   ------------------------------------------------------------------ */
+.dish-list { display: grid; gap: 16px; list-style: none; padding: 0; margin: 0; }
+.dish { display: grid; gap: 10px; }
+.dish-time { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3); font-weight: 600; white-space: nowrap; }
+.dish-uses, .dish-missing { color: var(--ink-2); }
+.dish-missing strong { color: var(--low); }
+.dish-complete { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; }
+.dish summary { cursor: pointer; font-weight: 700; min-height: 32px; }
+.dish-steps { display: grid; gap: 6px; padding-left: 1.4em; margin-top: 6px; color: var(--ink-2); }
