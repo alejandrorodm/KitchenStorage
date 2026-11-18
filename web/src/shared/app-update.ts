@@ -2,8 +2,7 @@ export type UpdateResult = 'updating' | 'up-to-date';
 
 /**
  * Asks the server for a newer version of the app. When there is one, the new
- * service worker takes over and the page reloads with it (registerSW in
- * main.tsx does it in autoUpdate mode; the listener below is a fallback).
+ * service worker takes over and the page reloads with it.
  */
 export async function checkForUpdate(): Promise<UpdateResult> {
   const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
@@ -18,6 +17,23 @@ export async function checkForUpdate(): Promise<UpdateResult> {
   navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
   registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
   return 'updating';
+}
+
+/**
+ * Runs `apply` (which reloads the page) as soon as `isBusy` says nothing is
+ * going on, checking again every `pollMs`. An update found in the background
+ * must not reload the page in the middle of an action or over its message.
+ */
+export function applyWhenIdle(apply: () => void, isBusy: () => boolean, pollMs = 1000): void {
+  if (!isBusy()) {
+    apply();
+    return;
+  }
+  const timer = setInterval(() => {
+    if (isBusy()) return;
+    clearInterval(timer);
+    apply();
+  }, pollMs);
 }
 
 /** "18 nov 2026, 14:32": when the running version was built. */

@@ -7,7 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' lets main.tsx choose when to reload into a new version (when the app is idle).
+      registerType: 'prompt',
       includeAssets: ['icon.svg'],
       manifest: {
         name: 'Kitchen Storage',
