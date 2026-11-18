@@ -1,4 +1,4 @@
-import { ChevronRight, CircleCheck, LogOut, Plus, ScanLine, ShoppingCart } from 'lucide-react';
+import { ChevronRight, CircleCheck, House, LogOut, Plus, ScanLine, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { useItems, useLogout, useMeals, useShopping } from '../../api/hooks';
 import { MEAL_TYPES, type FoodItem, type MealType } from '../../api/types';
@@ -17,7 +17,7 @@ const ALERT_PREVIEW = 6;
 const SHOPPING_PREVIEW = 8;
 
 /** Home screen: what we eat today, what is running out and what to buy. */
-export function TodayPage({ username }: { username: string }) {
+export function TodayPage({ username, isAdmin }: { username: string; isAdmin: boolean }) {
   const navigate = useNavigate();
   const logout = useLogout();
   const today = toIsoDate(new Date());
@@ -42,7 +42,12 @@ export function TodayPage({ username }: { username: string }) {
             <span>{date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</span>
           </h1>
         </div>
-        <IconButton icon={LogOut} label="Cerrar sesión" className="mobile-only" onClick={() => logout.mutate()} />
+        {/* Phones have no sidebar: these sections are reached from here. */}
+        <div className="today-head-actions mobile-only">
+          <IconButton icon={House} label="Mi casa" onClick={() => navigate('household')} />
+          {isAdmin && <IconButton icon={ShieldCheck} label="Administración" onClick={() => navigate('admin')} />}
+          <IconButton icon={LogOut} label="Cerrar sesión" onClick={() => logout.mutate()} />
+        </div>
       </header>
 
       <div className="quick-actions">

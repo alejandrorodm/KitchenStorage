@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
-import type { FoodItem, FoodItemInput, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
+import type { FoodItem, FoodItemInput, Household, HouseholdSummary, Invite, Meal, MealInput, MealType, ReceiptLine, ShoppingEntry, Unit, User } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -8,6 +8,9 @@ export const keys = {
   meals: (from: string, to: string) => ['meals', from, to] as const,
   shopping: ['shopping'] as const,
   receiptStatus: ['receipts', 'status'] as const,
+  household: ['household'] as const,
+  invites: ['admin', 'invites'] as const,
+  households: ['admin', 'households'] as const,
 };
 
 /** Data that changes together: stock edits affect alerts, the planner and the shopping list. */
@@ -152,5 +155,40 @@ export function useConfirmReceipt() {
   return useMutation({
     mutationFn: (lines: ReceiptLine[]) => api<{ merged: boolean }[]>('POST', '/api/receipts/confirm', { lines }),
     onSuccess: () => invalidate(),
+  });
+}
+
+// Household
+
+export function useHousehold() {
+  return useQuery({ queryKey: keys.household, queryFn: () => api<Household>('GET', '/api/household') });
+}
+
+export function useRegenerateHouseholdCode() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<Household>('POST', '/api/household/invite-code'),
+    onSuccess: (household) => client.setQueryData(keys.household, household),
+  });
+}
+
+// Admin
+
+export function useInvites() {
+  return useQuery({ queryKey: keys.invites, queryFn: () => api<Invite[]>('GET', '/api/admin/invites') });
+}
+
+export function useHouseholds() {
+  return useQuery({ queryKey: keys.households, queryFn: () => api<HouseholdSummary[]>('GET', '/api/admin/households') });
+}
+
+export function useInviteAction() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (action: { type: 'create' } | { type: 'revoke'; code: string }) =>
+      action.type === 'create'
+        ? api<Invite | void>('POST', '/api/admin/invites')
+        : api<Invite | void>('DELETE', `/api/admin/invites/${action.code}`),
+    onSuccess: () => invalidate([['admin']]),
   });
 }

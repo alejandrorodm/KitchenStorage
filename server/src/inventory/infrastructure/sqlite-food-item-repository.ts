@@ -23,45 +23,48 @@ const SELECT_WITH_PLANNED = `
   FROM food_items f`;
 
 export class SqliteFoodItemRepository implements FoodItemRepository {
-  constructor(private readonly db: Db) {}
+  constructor(
+    private readonly db: Db,
+    private readonly householdId: string,
+  ) {}
 
   list(): FoodItemView[] {
-    const rows = this.db.prepare(`${SELECT_WITH_PLANNED} ORDER BY f.name COLLATE NOCASE`).all() as unknown as Row[];
+    const rows = this.db.prepare(`${SELECT_WITH_PLANNED} WHERE f.household_id = ? ORDER BY f.name COLLATE NOCASE`).all(this.householdId) as unknown as Row[];
     return rows.map(toViewRow);
   }
 
   get(id: string): FoodItemView | undefined {
-    const row = this.db.prepare(`${SELECT_WITH_PLANNED} WHERE f.id = ?`).get(id) as Row | undefined;
+    const row = this.db.prepare(`${SELECT_WITH_PLANNED} WHERE f.id = ? AND f.household_id = ?`).get(id, this.householdId) as Row | undefined;
     return row && toViewRow(row);
   }
 
   findSame(nameKey: string, location: Location, unit: Unit): FoodItem | undefined {
     const row = this.db
-      .prepare('SELECT * FROM food_items WHERE name_key = ? AND location = ? AND unit = ? ORDER BY created_at LIMIT 1')
-      .get(nameKey, location, unit) as Row | undefined;
+      .prepare('SELECT * FROM food_items WHERE household_id = ? AND name_key = ? AND location = ? AND unit = ? ORDER BY created_at LIMIT 1')
+      .get(this.householdId, nameKey, location, unit) as Row | undefined;
     return row && toEntity(row);
   }
 
   insert(item: FoodItem): void {
     this.db
       .prepare(
-        `INSERT INTO food_items (id, name, name_key, location, quantity, unit, low_threshold, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO food_items (id, household_id, name, name_key, location, quantity, unit, low_threshold, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(item.id, item.name, normalizeName(item.name), item.location, item.quantity, item.unit, item.lowThreshold, item.createdAt, item.updatedAt);
+      .run(item.id, this.householdId, item.name, normalizeName(item.name), item.location, item.quantity, item.unit, item.lowThreshold, item.createdAt, item.updatedAt);
   }
 
   update(item: FoodItem): void {
     this.db
       .prepare(
         `UPDATE food_items SET name = ?, name_key = ?, location = ?, quantity = ?, unit = ?, low_threshold = ?, updated_at = ?
-         WHERE id = ?`,
+         WHERE id = ? AND household_id = ?`,
       )
-      .run(item.name, normalizeName(item.name), item.location, item.quantity, item.unit, item.lowThreshold, item.updatedAt, item.id);
+      .run(item.name, normalizeName(item.name), item.location, item.quantity, item.unit, item.lowThreshold, item.updatedAt, item.id, this.householdId);
   }
 
   delete(id: string): boolean {
-    return Number(this.db.prepare('DELETE FROM food_items WHERE id = ?').run(id).changes) > 0;
+    return Number(this.db.prepare('DELETE FROM food_items WHERE id = ? AND household_id = ?').run(id, this.householdId).changes) > 0;
   }
 
   runAtomically<T>(work: () => T): T {

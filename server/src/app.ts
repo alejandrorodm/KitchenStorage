@@ -3,10 +3,12 @@ import { fileURLToPath } from 'node:url';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { AuthService } from './auth/auth-service.js';
-import { registerAuth } from './auth/auth-routes.js';
+import { registerAuth, requireUser } from './auth/auth-routes.js';
+import { registerHouseholdRoutes } from './households/household-routes.js';
+import { HouseholdService } from './households/household-service.js';
 import { InventoryService } from './inventory/application/inventory-service.js';
 import { registerInventoryRoutes } from './inventory/infrastructure/inventory-routes.js';
 import { SqliteFoodItemRepository } from './inventory/infrastructure/sqlite-food-item-repository.js';
@@ -16,7 +18,7 @@ import { SqliteMealPlanRepository } from './meal-plan/infrastructure/sqlite-meal
 import { ReceiptService, type ReceiptParser } from './receipts/application/receipt-service.js';
 import { registerReceiptRoutes } from './receipts/infrastructure/receipt-routes.js';
 import { ASSET_LINKS } from './shared/asset-links.js';
-import { openDatabase } from './shared/db.js';
+import { openDatabase, type Db } from './shared/db.js';
 import { AppError } from './shared/errors.js';
 import { ChangeEvents } from './shared/events.js';
 import { validationMessage } from './shared/validation-message.js';
@@ -26,7 +28,6 @@ import { SqliteShoppingRepository } from './shopping/infrastructure/sqlite-shopp
 
 export interface AppOptions {
   databasePath: string;
-  inviteCode: string;
   receiptParser: ReceiptParser | null;
   cookieSecure: boolean;
   webDistPath?: string;
@@ -37,6 +38,8 @@ export interface AppOptions {
 declare module 'fastify' {
   interface FastifyInstance {
     changeEvents: ChangeEvents;
+    auth: AuthService;
+    households: HouseholdService;
   }
 }
 
@@ -47,26 +50,15 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: options.logger ?? false, trustProxy: options.trustProxy ?? false });
   const db = openDatabase(options.databasePath);
   const events = new ChangeEvents();
+  const households = new HouseholdService(db);
+  const auth = new AuthService(db, households);
   app.decorate('changeEvents', events);
+  app.decorate('auth', auth);
+  app.decorate('households', households);
   app.addHook('onClose', async () => db.close());
 
-  // Composition root: wire adapters into the use cases.
-  const foodItems = new SqliteFoodItemRepository(db);
-  // Clearing bought entries re-adds items that are still low.
-  const shopping = new ShoppingService(new SqliteShoppingRepository(db), () => {
-    syncShopping();
-    events.publish('shopping');
-  });
-  const syncShopping = () => shopping.syncWithStock(foodItems.list());
-  const inventory = new InventoryService(foodItems, () => {
-    syncShopping();
-    events.publish('inventory', 'shopping');
-  });
-  const meals = new MealPlanService(new SqliteMealPlanRepository(db), () => {
-    syncShopping();
-    events.publish('meals', 'inventory', 'shopping');
-  });
-  const receipts = new ReceiptService(options.receiptParser, inventory);
+  // Each request works on the kitchen of the signed-in user's household.
+  const kitchenFor = (request: FastifyRequest) => kitchen(db, requireUser(request).householdId, events, options.receiptParser);
 
   await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: MAX_RECEIPT_BYTES, files: 1 } });
@@ -87,14 +79,16 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   app.get('/api/health', async () => ({ ok: true }));
   app.get('/.well-known/assetlinks.json', async () => ASSET_LINKS);
-  registerAuth(app, new AuthService(db, options.inviteCode), { cookieSecure: options.cookieSecure });
-  registerInventoryRoutes(app, inventory);
-  registerMealPlanRoutes(app, meals);
-  registerShoppingRoutes(app, shopping);
-  registerReceiptRoutes(app, receipts);
+  registerAuth(app, auth, { cookieSecure: options.cookieSecure });
+  registerHouseholdRoutes(app, households);
+  registerInventoryRoutes(app, (request) => kitchenFor(request).inventory);
+  registerMealPlanRoutes(app, (request) => kitchenFor(request).meals);
+  registerShoppingRoutes(app, (request) => kitchenFor(request).shopping);
+  registerReceiptRoutes(app, (request) => kitchenFor(request).receipts);
 
-  // Server-sent events: every device refetches the topics that changed.
+  // Server-sent events: every device of the household refetches the topics that changed.
   app.get('/api/events', (request, reply) => {
+    const { householdId } = requireUser(request);
     reply.hijack();
     reply.raw.writeHead(200, {
       'content-type': 'text/event-stream',
@@ -103,7 +97,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       'x-accel-buffering': 'no',
     });
     reply.raw.write('retry: 3000\n\n');
-    const unsubscribe = events.subscribe((topics) => reply.raw.write(`data: ${JSON.stringify({ topics })}\n\n`));
+    const unsubscribe = events.subscribe(householdId, (topics) => reply.raw.write(`data: ${JSON.stringify({ topics })}\n\n`));
     const heartbeat = setInterval(() => reply.raw.write(': ping\n\n'), HEARTBEAT_MS);
     request.raw.on('close', () => {
       clearInterval(heartbeat);
@@ -123,4 +117,25 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   }
 
   return app;
+}
+
+/** Composition root for one household: wires its adapters into the use cases. */
+function kitchen(db: Db, householdId: string, events: ChangeEvents, receiptParser: ReceiptParser | null) {
+  const foodItems = new SqliteFoodItemRepository(db, householdId);
+  // Clearing bought entries re-adds items that are still low.
+  const shopping = new ShoppingService(new SqliteShoppingRepository(db, householdId), () => {
+    syncShopping();
+    events.publish(householdId, 'shopping');
+  });
+  const syncShopping = () => shopping.syncWithStock(foodItems.list());
+  const inventory = new InventoryService(foodItems, () => {
+    syncShopping();
+    events.publish(householdId, 'inventory', 'shopping');
+  });
+  const meals = new MealPlanService(new SqliteMealPlanRepository(db, householdId), () => {
+    syncShopping();
+    events.publish(householdId, 'meals', 'inventory', 'shopping');
+  });
+  const receipts = new ReceiptService(receiptParser, inventory);
+  return { inventory, meals, shopping, receipts };
 }

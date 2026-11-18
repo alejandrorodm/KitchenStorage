@@ -24,52 +24,55 @@ const SELECT = `
   FROM shopping_items s LEFT JOIN food_items f ON f.id = s.food_item_id`;
 
 export class SqliteShoppingRepository implements ShoppingRepository {
-  constructor(private readonly db: Db) {}
+  constructor(
+    private readonly db: Db,
+    private readonly householdId: string,
+  ) {}
 
   list(): ShoppingEntry[] {
-    const rows = this.db.prepare(`${SELECT} ORDER BY s.checked, s.created_at`).all() as unknown as Row[];
+    const rows = this.db.prepare(`${SELECT} WHERE s.household_id = ? ORDER BY s.checked, s.created_at`).all(this.householdId) as unknown as Row[];
     return rows.map(toEntry);
   }
 
   get(id: string): ShoppingEntry | undefined {
-    const row = this.db.prepare(`${SELECT} WHERE s.id = ?`).get(id) as Row | undefined;
+    const row = this.db.prepare(`${SELECT} WHERE s.id = ? AND s.household_id = ?`).get(id, this.householdId) as Row | undefined;
     return row && toEntry(row);
   }
 
   insert(entry: Omit<ShoppingEntry, 'status'>): void {
     this.db
       .prepare(
-        `INSERT INTO shopping_items (id, name, quantity, unit, food_item_id, source, checked, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO shopping_items (id, household_id, name, quantity, unit, food_item_id, source, checked, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(entry.id, entry.name, entry.quantity, entry.unit, entry.foodItemId, entry.source, entry.checked ? 1 : 0, entry.createdAt);
+      .run(entry.id, this.householdId, entry.name, entry.quantity, entry.unit, entry.foodItemId, entry.source, entry.checked ? 1 : 0, entry.createdAt);
   }
 
   setChecked(id: string, checked: boolean): boolean {
-    return Number(this.db.prepare('UPDATE shopping_items SET checked = ? WHERE id = ?').run(checked ? 1 : 0, id).changes) > 0;
+    return Number(this.db.prepare('UPDATE shopping_items SET checked = ? WHERE id = ? AND household_id = ?').run(checked ? 1 : 0, id, this.householdId).changes) > 0;
   }
 
   delete(id: string): boolean {
-    return Number(this.db.prepare('DELETE FROM shopping_items WHERE id = ?').run(id).changes) > 0;
+    return Number(this.db.prepare('DELETE FROM shopping_items WHERE id = ? AND household_id = ?').run(id, this.householdId).changes) > 0;
   }
 
   deleteChecked(): number {
-    return Number(this.db.prepare('DELETE FROM shopping_items WHERE checked = 1').run().changes);
+    return Number(this.db.prepare('DELETE FROM shopping_items WHERE household_id = ? AND checked = 1').run(this.householdId).changes);
   }
 
   autoEntryFoodIds(): Set<string> {
     const rows = this.db
-      .prepare("SELECT food_item_id FROM shopping_items WHERE source = 'auto' AND food_item_id IS NOT NULL")
-      .all() as { food_item_id: string }[];
+      .prepare("SELECT food_item_id FROM shopping_items WHERE household_id = ? AND source = 'auto' AND food_item_id IS NOT NULL")
+      .all(this.householdId) as { food_item_id: string }[];
     return new Set(rows.map((r) => r.food_item_id));
   }
 
   deleteAutoFor(foodItemIds: string[]): number {
     let removed = Number(
-      this.db.prepare("DELETE FROM shopping_items WHERE source = 'auto' AND food_item_id IS NULL").run().changes,
+      this.db.prepare("DELETE FROM shopping_items WHERE household_id = ? AND source = 'auto' AND food_item_id IS NULL").run(this.householdId).changes,
     );
-    const remove = this.db.prepare("DELETE FROM shopping_items WHERE source = 'auto' AND food_item_id = ?");
-    for (const id of foodItemIds) removed += Number(remove.run(id).changes);
+    const remove = this.db.prepare("DELETE FROM shopping_items WHERE household_id = ? AND source = 'auto' AND food_item_id = ?");
+    for (const id of foodItemIds) removed += Number(remove.run(this.householdId, id).changes);
     return removed;
   }
 

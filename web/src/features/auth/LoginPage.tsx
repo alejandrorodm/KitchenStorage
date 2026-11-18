@@ -66,8 +66,8 @@ export function LoginPage() {
             />
           </Field>
           {mode === 'register' && (
-            <Field label="Código de invitación" hint="Te lo da quien configuró la app en tu casa.">
-              <TextInput value={form.inviteCode} onChange={(e) => setForm({ ...form, inviteCode: e.target.value })} required />
+            <Field label="Código de invitación" hint="Pídeselo a alguien de tu casa (está en «Mi casa») o a quien administra la app.">
+              <TextInput autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="ABCD-EFGH" value={form.inviteCode} onChange={(e) => setForm({ ...form, inviteCode: e.target.value })} required />
             </Field>
           )}
           {login.error && (

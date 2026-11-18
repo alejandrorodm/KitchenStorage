@@ -4,7 +4,6 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      INVITE_CODE: ${INVITE_CODE:?Set INVITE_CODE in .env}
       COOKIE_SECURE: "true"
       TRUST_PROXY: "true"
     volumes:
