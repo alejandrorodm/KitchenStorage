@@ -126,4 +126,20 @@ export interface DishSuggestion {
   uses: string[];
   missing: string[];
   steps: string[];
+  /** TheMealDB recipe the idea adapts, if any. */
+  sourceUrl: string | null;
 }
+
+/** A dish the household keeps in My dishes. */
+export interface Dish {
+  id: string;
+  title: string;
+  description: string;
+  minutes: number | null;
+  ingredients: string[];
+  steps: string[];
+  sourceUrl: string | null;
+  createdAt: string;
+}
+
+export type DishInput = Omit<Dish, 'id' | 'createdAt'>;
