@@ -10,6 +10,9 @@ import { AssistantService, type FoodAssistant } from './assistant/application/as
 import { registerAssistantRoutes } from './assistant/infrastructure/assistant-routes.js';
 import { AuthService } from './auth/auth-service.js';
 import { CategoryService } from './categories/application/category-service.js';
+import { DishService } from './dishes/application/dish-service.js';
+import { registerDishRoutes } from './dishes/infrastructure/dish-routes.js';
+import { SqliteDishRepository } from './dishes/infrastructure/sqlite-dish-repository.js';
 import { registerCategoryRoutes } from './categories/infrastructure/category-routes.js';
 import { SqliteCategoryRepository } from './categories/infrastructure/sqlite-category-repository.js';
 import { registerAuth, requireUser } from './auth/auth-routes.js';
@@ -104,6 +107,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerPushRoutes(app, notifier);
   registerReceiptRoutes(app, (request) => kitchenFor(request).receipts);
   registerAssistantRoutes(app, (request) => kitchenFor(request).assistant);
+  registerDishRoutes(app, (request) => kitchenFor(request).dishes);
 
   // Server-sent events: every device of the household refetches the topics that changed.
   // Open streams never end on their own, so they are ended on shutdown; otherwise a restart waits for them.
@@ -181,5 +185,6 @@ function kitchen(
   });
   const receipts = new ReceiptService(receiptParser, inventory, categories);
   const assistant = new AssistantService(foodAssistant, inventory, categories);
-  return { inventory, categories, meals, shopping, receipts, assistant };
+  const dishes = new DishService(new SqliteDishRepository(db, householdId), () => events.publish(householdId, 'dishes'));
+  return { inventory, categories, meals, shopping, receipts, assistant, dishes };
 }

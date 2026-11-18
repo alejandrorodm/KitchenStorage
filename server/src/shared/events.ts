@@ -1,4 +1,4 @@
-export type Topic = 'inventory' | 'meals' | 'shopping';
+export type Topic = 'inventory' | 'meals' | 'shopping' | 'dishes';
 
 type Listener = (topics: Topic[]) => void;
 

@@ -185,6 +185,22 @@ export const MIGRATIONS: Migration[] = [
     const createdAt = new Date().toISOString();
     for (const { id } of db.prepare('SELECT id FROM households').all() as { id: string }[]) insertDefaultCategories(db, id, createdAt, names);
   },
+  // v6: dishes each household keeps (written by hand or saved from an AI idea).
+  `
+    CREATE TABLE dishes (
+      id TEXT PRIMARY KEY,
+      household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      title_key TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      minutes INTEGER,
+      ingredients TEXT NOT NULL DEFAULT '[]',
+      steps TEXT NOT NULL DEFAULT '[]',
+      source_url TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (household_id, title_key)
+    );
+  `,
 ];
 
 export function openDatabase(path: string): Db {
