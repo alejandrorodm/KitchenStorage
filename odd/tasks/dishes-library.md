@@ -25,3 +25,5 @@ Route evidence: one developer, dependent units (T3's web builds on T1/T2's APIs)
 - **L2** user chose "TheMealDB (Recommended)" as the recipe database. Probe: `filter.php?i=chicken_breast` and `lookup.php?i=52772` answer JSON with key `1`.
 - **L3** UI plan: the existing "Ideas" tab becomes "Platos" with My dishes and the AI ideas (no 6th tab).
 - **L4** T1–T3 done; independent verifier launched for the whole feature (migration v6 is item 1).
+- **L5** Verifier: S1–S4 pass, no blockers; migration v6 keeps all data (FK check empty, user_version 6). Native review (risk, reliability) approved and acknowledged, advisories only.
+- **L6** 15183f7 fixes the verifier advisories: S4 is now enforced (one retry when fewer than 3 ideas need ≤2 purchases, keeping the better answer), saved ingredients cap 60 (30+30 from the AI), racing duplicate titles answer 409. 112 server + 17 web tests pass. Pending: push, PR, merge, deploy (user decision); phone check of the Platos tab.
