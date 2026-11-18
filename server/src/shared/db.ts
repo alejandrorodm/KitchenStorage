@@ -180,8 +180,10 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE food_items ADD COLUMN category_id TEXT REFERENCES categories(id) ON DELETE SET NULL;
       CREATE INDEX food_items_category ON food_items (category_id);
     `);
+    // Frozen here: later edits to DEFAULT_CATEGORIES must not change what this migration seeds.
+    const names = ['Proteínas', 'Verduras', 'Frutas', 'Lácteos', 'Cereales y pasta', 'Legumbres', 'Bebidas', 'Salsas y condimentos', 'Dulces y snacks'];
     const createdAt = new Date().toISOString();
-    for (const { id } of db.prepare('SELECT id FROM households').all() as { id: string }[]) insertDefaultCategories(db, id, createdAt);
+    for (const { id } of db.prepare('SELECT id FROM households').all() as { id: string }[]) insertDefaultCategories(db, id, createdAt, names);
   },
 ];
 

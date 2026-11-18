@@ -5,9 +5,9 @@ import type { CategoryRepository } from '../application/category-service.js';
 import { DEFAULT_CATEGORIES, type Category } from '../domain/category.js';
 
 /** Gives a household the basic categories (used for new households and by the migration). */
-export function insertDefaultCategories(db: Db, householdId: string, createdAt: string): void {
+export function insertDefaultCategories(db: Db, householdId: string, createdAt: string, names: readonly string[] = DEFAULT_CATEGORIES): void {
   const insert = db.prepare('INSERT OR IGNORE INTO categories (id, household_id, name, name_key, created_at) VALUES (?, ?, ?, ?, ?)');
-  for (const name of DEFAULT_CATEGORIES) insert.run(randomUUID(), householdId, name, normalizeName(name), createdAt);
+  for (const name of names) insert.run(randomUUID(), householdId, name, normalizeName(name), createdAt);
 }
 
 export class SqliteCategoryRepository implements CategoryRepository {

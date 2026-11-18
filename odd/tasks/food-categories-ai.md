@@ -1,6 +1,6 @@
 # Food categories and AI helpers
 Objective: group food items into household categories (seeded with the basics), let the AI pick categories (receipts and a "classify" button) and suggest dishes from what is in stock.
-Branch: `feat/food-categories-ai` · Delivery: ask-on-risk · Test runner: Vitest (`npm test`).
+Branch: `feat/food-categories-ai` · Delivery: single-pr (assumption, as in previous features; ~1.4k lines across 3 work-unit commits) · Test runner: Vitest (`npm test`).
 
 ## Specs
 
@@ -16,12 +16,14 @@ Branch: `feat/food-categories-ai` · Delivery: ask-on-risk · Test runner: Vites
 
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
-| T1 | S1, S2, S3 | inline | pending | |
-| T2 | S4, S5, S7 | inline | pending | |
-| T3 | S6, S7 | inline | pending | |
+| T1 | S1, S2, S3 | inline | done | 6761b32 — RED: categories.test.ts module missing → GREEN 73 server + 12 web; native review (risk, reliability) approved + acknowledged |
+| T2 | S4, S5, S7 | inline | done | 4a2df38 — RED: assistant.test.ts module missing → GREEN 86 server; 3 receipt tests updated for the new `category` field; assess: medium, under_budget. Includes the /api/dishes/suggest server endpoint (shared assistant module) |
+| T3 | S6, S7 | inline | done | b433a02 — web Ideas page + normalizeForMatch (RED: module missing → GREEN 13 web); assess: medium, under_budget |
 
 Route evidence: one developer, sequential dependent units (T2/T3 build on T1's categories and the AI adapter), no Writer trigger reason. Risk: T1 adds migration v5 (item 1) — independent verifier at the feature end.
 
 ## Log
 
 - **L1** (2026-11-18) — "crea secciones para los alimentos (proteínas, verduras, frutas) y al escanear un ticket con IA que me ponga automáticamente la categoría que considere por producto dentro de las que hay. podré crear categorías nuevas si quiero pero crea tu primero las fundamentales y pon un botón de IA en los alimentos para que los que no tengan sección poder encajonarlos y además una sección para recomendaciones de platos de IA"
+- **L2** (2026-11-18) — T1–T3 implemented. Visual browser check not done (Chrome extension not connected); local API smoke on a scratch DB confirmed default categories, item category assignment and the 503 `ai_disabled` answer without GEMINI_API_KEY. Real Gemini calls not exercised locally (no local .env); adapters covered by stubbed-fetch tests.
+- **L3** (2026-11-18) — Independent verifier: S1–S7 PASS, no blockers (migration v5 probed on a baseline-built v4 DB and a v1 DB: no data loss, 9 categories per household, FK check empty, idempotent; household isolation and unchanged existing outputs except the new `categoryId`). Advisory applied: migration v5 now seeds a frozen name list instead of the live DEFAULT_CATEGORIES.
